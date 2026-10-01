@@ -5,11 +5,11 @@ import streamlit as st
 import engine
 
 # ---------------------------------------------------------
-# 1. IMPOSTAZIONI DEL GIOCO
+# 1. IL NOSTRO BANCO DI LAVORO LEGO (PAGINA WEB)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
 
-# Creiamo la cartella assets se non c'è
+# Assicuriamoci che la scatola 'assets' esista sul computer
 if not os.path.exists("assets"):
     os.makedirs("assets")
 
@@ -20,7 +20,7 @@ def carica_mondo():
 config = carica_mondo()
 
 # ---------------------------------------------------------
-# 2. DETECTIVE PER TROVARE LE FOTO (.png o .jpg)
+# 2. IL DETECTIVE MAGICO (Cerca qualsiasi immagine in assets)
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -34,18 +34,18 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# Funzione per salvare subito la foto caricata sul computer
+# Funzione per salvare le foto caricate sul computer
 def salva_foto_caricata(file_caricato, nome_destinazione):
     if file_caricato:
         est = file_caricato.name.split(".")[-1].lower()
         percorso_finale = os.path.join("assets", f"{nome_destinazione}.{est}")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Foto per '{nome_destinazione}' salvata!")
+        st.success(f"🎉 Foto salvata con successo come '{nome_destinazione}.{est}'!")
         st.rerun()
 
 # ---------------------------------------------------------
-# 3. SFONDO INGRESSO
+# 3. SFONDO DI COPERTINA ALL'INGRESSO
 # ---------------------------------------------------------
 def imposta_sfondo_copertina():
     percorso_copertina = trova_foto("copertina")
@@ -73,7 +73,7 @@ def imposta_sfondo_copertina():
         )
 
 # ---------------------------------------------------------
-# 4. PASSWORD DI INGRESSO
+# 4. LA PORTA SEGRETA CON PASSWORD
 # ---------------------------------------------------------
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
@@ -96,7 +96,7 @@ if not st.session_state.autenticato:
     st.stop()
 
 # ---------------------------------------------------------
-# 5. MOTORE DEL GIOCO
+# 5. AVVIAMO IL MOTORE DEL GIOCO
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -105,39 +105,36 @@ s = st.session_state.game_state
 engine.timer(s, config)
 
 # ---------------------------------------------------------
-# 6. LA BARRA IN ALTO CON LUOGO E UPLOAD FOTO DIRETTO!
+# 6. LA BARRA IN ALTO CON LA FOTO DELLA LOCATION E UPLOAD
 # ---------------------------------------------------------
 zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
 padrone_casa_id = config['zones'][zona_id]['owner']
 
-# Capire quale foto usare per la zona attuale
-chiave_sfondo = padrone_casa_id
+# Chiave separata per la FOTO DEL LUOGO (es. brago_luogo, rosko_luogo)
+chiave_luogo = f"{padrone_casa_id}_luogo"
 if s['phase'] == 'intro':
-    chiave_sfondo = "copertina"
+    chiave_luogo = "brago_luogo"
 
 col1, col2, col_luogo, col4, col5 = st.columns([1, 1, 2, 1, 1])
 
 col1.metric("⏳ Ora Narrativa", f"{s['hour']}/72")
 col2.metric("⏱ Minuti Reali", f"{int(s['active_seconds'] // 60)}/120")
 
-# COLONNA DEL LUOGO CON FOTO E PULSANTE UPLOAD VICINO!
+# FOTO DELLA LOCATION E TASTO PER CAMBIARLA
 with col_luogo:
-    st.markdown(f"### 📍 Luogo: {nome_zona}")
+    st.markdown(f"### 🏰 Location: {nome_zona}")
     
-    # Mostra la foto del luogo se c'è
-    if trova_foto(chiave_sfondo):
-        mostra_foto(chiave_sfondo, f"Scenario: {nome_zona}")
+    mostra_foto(chiave_luogo, f"Foto dello scenario: {nome_zona}")
     
-    # PULSANTE DI UPLOAD PROPRIO VICINO AL LUOGO!
-    with st.expander(f"📸 Carica/Cambia foto per {nome_zona}"):
+    with st.expander(f"🖼️ Carica o cambia FOTO DELLA LOCATION ({nome_zona})"):
         foto_luogo_nuova = st.file_uploader(
-            f"Scegli una foto per {nome_zona}", 
+            f"Scegli una foto per lo scenario di {nome_zona}", 
             type=["png", "jpg", "jpeg"], 
-            key=f"up_top_{chiave_sfondo}"
+            key=f"up_top_{chiave_luogo}"
         )
-        if st.button("💾 Salva Foto Luogo", key=f"btn_top_{chiave_sfondo}"):
-            salva_foto_caricata(foto_luogo_nuova, chiave_sfondo)
+        if st.button("💾 Salva Foto Location", key=f"btn_top_{chiave_luogo}"):
+            salva_foto_caricata(foto_luogo_nuova, chiave_luogo)
 
 col4.metric("🎒 Inventario", ", ".join(s['inventory']) if s['inventory'] else "Vuoto")
 
@@ -162,7 +159,7 @@ with st.sidebar:
         st.session_state.autenticato = False
         st.rerun()
 
-# STANZE DEL GIOCO
+# LE STANZE DI GIOCO
 tab_gioca, tab_mappa, tab_personaggi, tab_relazioni, tab_agenti, tab_diag = st.tabs([
     "🎮 Gioca", "🗺️ Mappa e zone", "👤 Personaggi", 
     "📊 Relazioni e percorso", "💬 Agenti tra loro", "🛠️ Scrittura e diagnostica"
@@ -182,15 +179,16 @@ with tab_gioca:
         st.info("🌊 Ti svegli ai margini della laguna dopo una grande piena. Davanti a te c'è Brago.")
         st.divider()
 
-        # LA PROPOSTA DI BRAGO CON FOTO E UPLOAD ACCANTO
+        # LA PROPOSTA DI BRAGO CON FOTO PERSONAGGIO E UPLOAD DEDICATO
         st.subheader("🐖 La Proposta di Brago")
         col_brago_foto, col_brago_testo = st.columns([1, 2])
         
         with col_brago_foto:
-            mostra_foto("brago", "Brago (Lagoon Pig)")
-            nuova_foto_brago = st.file_uploader("Carica foto Brago", type=["png", "jpg", "jpeg"], key="up_brago")
-            if st.button("💾 Salva Foto Brago", key="btn_brago"):
-                salva_foto_caricata(nuova_foto_brago, "brago")
+            mostra_foto("brago", "Personaggio: Brago (Lagoon Pig)")
+            with st.expander("👤 Cambia Foto Personaggio Brago"):
+                nuova_foto_brago = st.file_uploader("Scegli foto per Brago", type=["png", "jpg", "jpeg"], key="up_brago")
+                if st.button("💾 Salva Foto Brago", key="btn_brago"):
+                    salva_foto_caricata(nuova_foto_brago, "brago")
 
         with col_brago_testo:
             st.write(
@@ -225,14 +223,14 @@ with tab_gioca:
             st.rerun()
 
     else:
-        # SE SIAMO IN UN LUOGO (es. Lizzie Bar)
+        # SCENARI SPECIALI (es. Lizzie Bar)
         if padrone_casa_id == "lizzie":
             scelta_interno = st.radio("🏢 Dove vuoi andare?", ["Esterno Bar", "Interno Bar", "Suite Riservata"], horizontal=True)
-            chiave_sfondo = "lizzie_esterno" if scelta_interno == "Esterno Bar" else "lizzie_interno" if scelta_interno == "Interno Bar" else "lizzie_suite"
+            chiave_luogo = "lizzie_esterno_luogo" if scelta_interno == "Esterno Bar" else "lizzie_interno_luogo" if scelta_interno == "Interno Bar" else "lizzie_suite_luogo"
 
         st.divider()
 
-        # PARLIAMO CON I PERSONAGGI
+        # PARLIAMO CON GLI AGENTI AI (OGNI PERSONAGGIO HA IL SUO RITRATTO + UPLOAD SEPARATO)
         agenti_presenti = engine.available_agents(s, config)
         st.write("### 💬 Personaggi con cui puoi parlare:")
         if agenti_presenti:
@@ -241,9 +239,15 @@ with tab_gioca:
                 ag_nome = ag_dati['name']
                 col_ritratto, col_chat = st.columns([1, 3])
                 
+                # FOTO DEL PERSONAGGIO AGENTE AI
                 with col_ritratto:
-                    mostra_foto(ag_id, ag_nome)
+                    mostra_foto(ag_id, f"Personaggio: {ag_nome}")
+                    with st.expander(f"👤 Cambia Foto Personaggio {ag_nome}"):
+                        foto_ag_nuova = st.file_uploader(f"Foto per {ag_nome}", type=["png", "jpg", "jpeg"], key=f"up_ag_{ag_id}")
+                        if st.button(f"💾 Salva Foto {ag_nome}", key=f"btn_ag_{ag_id}"):
+                            salva_foto_caricata(foto_ag_nuova, ag_id)
                 
+                # DIALOGO CHAT
                 with col_chat:
                     st.write(f"### {ag_nome} (Fiducia: {s['trust'][ag_id]})")
                     frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"txt_{ag_id}")
@@ -277,7 +281,7 @@ with tab_mappa:
     for id_z, dati_z in config['zones'].items():
         padre_id = dati_z['owner']
         st.write(f"• **{dati_z['name']}** — Controllato da: {config['agents'][padre_id]['name']}")
-        mostra_foto(padre_id, dati_z['name'])
+        mostra_foto(f"{padre_id}_luogo", dati_z['name'])
 
 # --- STANZA 3: PERSONAGGI ---
 with tab_personaggi:
@@ -304,18 +308,25 @@ with tab_diag:
     
     opzioni_target = {
         "Foto di Copertina Sfondo": "copertina",
-        "Brago (Lagoon Pig)": "brago",
-        "Rosko (Cannaregio)": "rosko",
-        "Lizzie (Esterno Bar)": "lizzie_esterno",
-        "Lizzie (Interno Bar)": "lizzie_interno",
-        "Lizzie (Suite Bar)": "lizzie_suite",
-        "Alberic (San Polo)": "alberic",
-        "Marla (Dorsoduro)": "marla",
-        "Eloise (San Marco)": "eloise",
-        "Klaus (Castello)": "klaus"
+        "Brago (Personaggio)": "brago",
+        "Brago (Location Laguna)": "brago_luogo",
+        "Rosko (Personaggio)": "rosko",
+        "Cannaregio (Location Rosko)": "rosko_luogo",
+        "Lizzie (Personaggio)": "lizzie",
+        "Santa Croce Esterno (Location Lizzie)": "lizzie_esterno_luogo",
+        "Santa Croce Interno (Location Lizzie)": "lizzie_interno_luogo",
+        "Santa Croce Suite (Location Lizzie)": "lizzie_suite_luogo",
+        "Alberic (Personaggio)": "alberic",
+        "San Polo (Location Alberic)": "alberic_luogo",
+        "Marla (Personaggio)": "marla",
+        "Dorsoduro (Location Marla)": "marla_luogo",
+        "Eloise (Personaggio)": "eloise",
+        "San Marco (Location Eloise)": "eloise_luogo",
+        "Klaus (Personaggio)": "klaus",
+        "Castello (Location Klaus)": "klaus_luogo"
     }
 
-    scelta_etichetta = st.selectbox("A chi appartiene questa foto?", list(opzioni_target.keys()))
+    scelta_etichetta = st.selectbox("Cosa stai caricando?", list(opzioni_target.keys()))
     chiave_destinazione = opzioni_target[scelta_etichetta]
 
     nuova_foto_diag = st.file_uploader("Scegli la foto dal tuo computer:", type=["png", "jpg", "jpeg"], key="up_diag")
