@@ -1,0 +1,798 @@
+{
+  "version": "0.1.0",
+  "title": "Venezia Luna Park",
+  "status": "Proposta narrativa modificabile; personaggi di fantasia. Non ricostruzione biografica di persone reali.",
+  "rules": {
+    "narrative_limit": 72,
+    "active_limit_minutes": 120,
+    "party_start": 12,
+    "party_end": 24,
+    "test_start": 66,
+    "test_cost": 1,
+    "test_seconds": 120,
+    "travel_hours": 1,
+    "dialogue_hours": 1
+  },
+  "zones": {
+    "laguna": {
+      "name": "Margini della laguna",
+      "owner": "brago",
+      "description": "Pontili di recupero, fango, palco punk e barchini pirata.",
+      "neighbors": [
+        "cannaregio",
+        "castello"
+      ],
+      "x": 1,
+      "y": 1
+    },
+    "cannaregio": {
+      "name": "Cannaregio — Archivio dei recuperi",
+      "owner": "rosko",
+      "description": "Mercato di memorie, automi dismessi e collezioni private.",
+      "neighbors": [
+        "laguna",
+        "santa_croce",
+        "san_polo"
+      ],
+      "x": 3,
+      "y": 2
+    },
+    "santa_croce": {
+      "name": "Santa Croce — Lizzie Bar",
+      "owner": "lizzie",
+      "description": "Territorio neutrale. Festa in maschera dalle ore narrative 12 alle 24. Il Porco non entra.",
+      "neighbors": [
+        "cannaregio",
+        "san_polo",
+        "dorsoduro"
+      ],
+      "x": 2,
+      "y": 4
+    },
+    "san_polo": {
+      "name": "San Polo — Club delle scuderie",
+      "owner": "alberic",
+      "description": "Casinò di gara, sponsor, pontili e simulatori.",
+      "neighbors": [
+        "cannaregio",
+        "santa_croce",
+        "san_marco"
+      ],
+      "x": 4,
+      "y": 4
+    },
+    "dorsoduro": {
+      "name": "Dorsoduro — Palazzo delle meraviglie",
+      "owner": "marla",
+      "description": "Collezioni viventi, aste di esperienze e approdo degli scafi.",
+      "neighbors": [
+        "santa_croce",
+        "san_marco"
+      ],
+      "x": 3,
+      "y": 6
+    },
+    "san_marco": {
+      "name": "San Marco — Teatro delle maschere",
+      "owner": "eloise",
+      "description": "Spettacoli, pubblicità olografiche e feste nei palazzi.",
+      "neighbors": [
+        "san_polo",
+        "dorsoduro",
+        "castello"
+      ],
+      "x": 6,
+      "y": 5
+    },
+    "castello": {
+      "name": "Castello — Officine dell’Arsenale",
+      "owner": "klaus",
+      "description": "Motori, laboratori e accesso al circuito del test.",
+      "neighbors": [
+        "laguna",
+        "san_marco"
+      ],
+      "x": 7,
+      "y": 2
+    }
+  },
+  "agents": {
+    "brago": {
+      "id": "brago",
+      "name": "Lagoon Pig / Brago",
+      "status": "Nome proposto",
+      "role": "Porco della Laguna e antagonista persistente",
+      "activation": "incontro e ricerca autonoma",
+      "biography": "Brago è un ibrido suino cresciuto tra le squadre che recuperavano materiali dai fondali. Quando il lavoro è diventato inutile per i palazzi, ha trasformato un pontile abbandonato in un insediamento di musicisti, contrabbandieri e riparatori. Suona il basso e comanda senza chiamarsi capo. Il fango, gli amplificatori rattoppati e gli scafi rubati sono segni di appartenenza. Sei mesi prima della storia ha accettato un lavoro per Alberic: preparare un percorso secondario per una dimostrazione nautica. Un esperimento al motore ha provocato danni al loro pontile. Brago ha ricevuto una compensazione soltanto parziale e ha perso prestigio per essersi fidato dei Fondatori. Da allora pretende che ogni accordo venga rispettato. Quando recupera il protagonista dopo la piena, lo considera una risorsa e lo sequestra. Può concedergli un passaggio a Venezia dopo una prova, imponendo un incarico o un debito. La fuga del ragazzo mette nuovamente in discussione la sua autorità. Brago comincia a cercarlo anche quando nessuno lo vede: vuole recuperare il controllo, ma può negoziare se ottiene qualcosa che per lui vale più della cattura. In questa versione offre un patto al naufrago: recuperare l’amplificatore della comunità esposto a San Marco e restituirlo entro l’ora narrativa 48. Se accetta, lo accompagna e lo aiuta; la lealtà può diventare amicizia. Se rifiuta, lo rende schiavo. Dopo la fuga lo cerca come antagonista. Il tradimento produce ostilità soltanto quando viene scoperto. Se lo cattura, lo uccide e la partita termina.",
+      "goals": [
+        "Recuperare l’amplificatore entro l’ora 48.",
+        "Aiutare chi rispetta il patto; catturare il fuggitivo o il traditore scoperto."
+      ],
+      "vulnerabilities": [
+        "Umiliazione pubblica e accusa di essersi venduto ai Fondatori.",
+        "Rispetto concreto per il lavoro e la musica della comunità."
+      ],
+      "private_knowledge": [
+        "Ha accettato personalmente il lavoro per Alberic e lo ha nascosto a parte della banda.",
+        "Conosce una vecchia via di servizio verso Venezia, non tutte le uscite dei palazzi."
+      ],
+      "initial_knowledge": [
+        "Ha recuperato il protagonista dopo la piena.",
+        "Conosce solo le risposte ricevute nell’interrogatorio e gli accordi effettivamente registrati."
+      ],
+      "relationships": [
+        {
+          "target": "lizzie",
+          "belief": "È una mediatrice affidabile, ma protegge chi frequenta il bar."
+        },
+        {
+          "target": "alberic",
+          "belief": "Mi deve ancora qualcosa e non voglio dipendere da lui."
+        },
+        {
+          "target": "rosko",
+          "belief": "Compra ricambi dai nostri recuperi e conosce il pontile."
+        }
+      ],
+      "voice": "Frasi brevi, ironia ruvida, immagini di musica, acqua e rottami. Può essere minaccioso senza urlare sempre. Non ridurlo a grugniti o insulti.",
+      "allowed_actions": [
+        "offer_initial_trial",
+        "assign_authorized_task",
+        "grant_lagoon_passage",
+        "question_local_witness",
+        "follow_available_clue",
+        "watch_reachable_location",
+        "attempt_interception",
+        "negotiate_release"
+      ],
+      "grant_conditions": "Può concedere passaggio o tregua se una prova o uno scambio valido soddisfa i suoi interessi. La paura non basta a renderlo accondiscendente.",
+      "limits": "Non entra nel Lizzie Bar; ricerca tramite indizi registrati, si sposta tra zone adiacenti e lascia un turno di fuga prima della cattura. Non conosce automaticamente il tradimento.",
+      "player_referrals": [
+        "lizzie",
+        "alberic",
+        "rosko"
+      ],
+      "zone": "laguna",
+      "inspiration": {
+        "name": "Personaggio originale",
+        "basis": "Comunità punk e recupero; nessun imprenditore reale come modello del sequestratore.",
+        "url": ""
+      },
+      "topics": {
+        "respect": "Rispetto del patto e della comunità",
+        "insult": "Umiliare la comunità",
+        "request": "Chiedere una prova o una possibilità",
+        "repair": "Ammettere un errore e proporre una riparazione"
+      }
+    },
+    "lizzie": {
+      "id": "lizzie",
+      "name": "Lizzie",
+      "status": "Biografia proposta da armonizzare con il canone",
+      "role": "Proprietaria del Lizzie Bar e mediatrice",
+      "activation": "incontro",
+      "biography": "Lizzie è diventata indispensabile perché ricorda ciò che gli altri preferiscono dimenticare. Prima di possedere il bar cantava alle feste dei Fondatori. Ha assistito a promesse solenni trasformate in battute il mattino dopo e ha imparato a distinguere una confidenza da una richiesta di complicità. Ha aperto il Lizzie Bar con favori provenienti da più persone, evitando che una sola potesse rivendicarne il possesso. Il locale riceve Fondatori, ibridi, robot e gente dei margini. Lizzie non li considera uguali, ma pretende che al suo bancone nessuno sia trattato come merce. Dopo il danno al pontile dei Porci ha mediato una compensazione tra Brago e Alberic. L’accordo incompleto è una ferita nella sua reputazione. Quando arriva il protagonista, può vedere in lui un ragazzo da proteggere, un opportunista o un nuovo problema. Lo presenta agli altri solo se pensa che quella presentazione non danneggi il bar. Sa molte cose perché le ha ascoltate, ma non sa che cosa accade dietro tutte le porte. Le bugie credibili possono ingannarla e il suo giudizio può cambiare.",
+      "goals": [
+        "Mantenere il bar indipendente e sicuro.",
+        "Non diventare il mezzo con cui i Fondatori controllano gli ospiti."
+      ],
+      "vulnerabilities": [
+        "Il rischio che qualcuno venga catturato dopo aver chiesto rifugio al bar.",
+        "Il dubbio di aver mediato un accordo ingiusto con i Porci."
+      ],
+      "private_knowledge": [
+        "Una parte della compensazione è stata promessa ma non versata.",
+        "Il bar dipende ancora da un vecchio favore di Marla."
+      ],
+      "initial_knowledge": [
+        "Conosce la rivalità pubblica tra Marla e Alberic.",
+        "Conosce l’accordo che ha mediato tra Brago e Alberic; non la causa tecnica del danno."
+      ],
+      "relationships": [
+        {
+          "target": "brago",
+          "belief": "Può rispettare una parola data, ma non accetta di perdere la faccia."
+        },
+        {
+          "target": "marla",
+          "belief": "Il suo aiuto non è mai completamente gratuito."
+        },
+        {
+          "target": "eloise",
+          "belief": "Le sue feste portano clienti e problemi."
+        }
+      ],
+      "voice": "Asciutta, attenta, con umorismo. Fa domande precise e lascia silenzi. Non parla come una guida turistica o un elenco di missioni.",
+      "allowed_actions": [
+        "grant_introduction",
+        "share_known_information",
+        "offer_temporary_refuge",
+        "assign_authorized_task",
+        "decline_request",
+        "answer_antagonist_query"
+      ],
+      "grant_conditions": "Una consegna verificata, una promessa mantenuta o una motivazione credibile possono aprire una presentazione. Le informazioni su un ospite non sono offerte automaticamente a Brago.",
+      "limits": "Non conosce tutti i segreti e non può autorizzare direttamente la qualificazione. Ogni rifugio ha condizioni e durata registrate.",
+      "player_referrals": [
+        "marla",
+        "eloise",
+        "rosko"
+      ],
+      "zone": "santa_croce",
+      "inspiration": {
+        "name": "Richard Branson, solo come spunto secondario",
+        "basis": "Origini musicali dell’impresa; Lizzie resta una mediatrice originale, non una miliardaria obbligatoriamente.",
+        "url": "https://com.prod.loyalty.virgin.com/about-virgin/timeline"
+      },
+      "topics": {
+        "respect": "Protezione degli ospiti",
+        "insult": "Vendere le confidenze",
+        "request": "Chiedere una prova o una possibilità",
+        "repair": "Ammettere un errore e proporre una riparazione"
+      }
+    },
+    "marla": {
+      "id": "marla",
+      "name": "Marla",
+      "status": "Biografia proposta da armonizzare con Marla Arai",
+      "role": "Fondatrice e collezionista",
+      "activation": "incontro",
+      "biography": "Prima del Neurocene, Marla aveva costruito potere acquistando ciò che altre persone avrebbero desiderato possedere: opere, archivi, brevetti e forme di vita rare. La partecipazione al progetto N le aveva promesso un futuro senza scarsità per chi sapeva prevederlo. A Venezia vive in un palazzo bianco dove ogni oggetto ha una storia curata e ogni ospite rischia di diventare un’acquisizione. L’immortalità ha prolungato le sue passioni senza renderle durature. Si annoia quando ottiene ciò che desidera e torna a desiderarlo quando qualcuno glielo sottrae. Lizzie è una delle poche persone che le abbia detto di no senza abbandonarla. Alberic interpreta ogni sua scelta come una sfida; lei alterna disprezzo e interesse per quella ostinazione. Il protagonista le interessa perché arriva da un mondo che lei ha smesso di visitare. Può ascoltarlo sinceramente oppure usarlo per animare una festa. Non concede una gondola soltanto perché viene adulata: vuole sentire che lo scambio la riguarda davvero e che l’altro non sta recitando lo stesso discorso con tutti.",
+      "goals": [
+        "Acquisire un’esperienza o una relazione che interrompa la noia.",
+        "Conservare influenza senza mostrarsi dipendente dall’attenzione altrui."
+      ],
+      "vulnerabilities": [
+        "Essere desiderata soltanto per le proprie risorse.",
+        "Scoprire che un ospite la considera intercambiabile con altri sponsor."
+      ],
+      "private_knowledge": [
+        "Conserva una stanza preparata per una persona che non è mai tornata.",
+        "Ha aiutato Lizzie ad aprire il bar e vorrebbe che il favore continuasse a contare."
+      ],
+      "initial_knowledge": [
+        "Conosce i propri beni e accordi.",
+        "Conosce la rivalità con Alberic, non i segreti del suo incarico ai Porci."
+      ],
+      "relationships": [
+        {
+          "target": "lizzie",
+          "belief": "Mi deve un favore, ma la sua indipendenza è ciò che mi interessa."
+        },
+        {
+          "target": "alberic",
+          "belief": "Vuole battermi anche quando non stiamo gareggiando."
+        },
+        {
+          "target": "klaus",
+          "belief": "È utile, ma considera le mie proprietà materia per i suoi esperimenti."
+        },
+        {
+          "target": "eloise",
+          "belief": "Sa trasformare un mio gesto in una storia pubblica."
+        }
+      ],
+      "voice": "Elegante, precisa, seduttiva quando le conviene. Nota dettagli e formula offerte come inviti. Evita monologhi filosofici costanti.",
+      "allowed_actions": [
+        "grant_boat_access",
+        "grant_palace_invitation",
+        "assign_authorized_task",
+        "refer_to_klaus",
+        "offer_conditional_protection",
+        "decline_request"
+      ],
+      "grant_conditions": "Interesse credibile, presentazione di Lizzie o incarico completato rendono disponibili alcune concessioni. Un accordo con Alberic può irritarla oppure spingerla a rilanciare, secondo il rapporto.",
+      "limits": "Non può cancellare il tempo limite né rendere automaticamente qualificato il protagonista. Concede soltanto beni e accessi disponibili.",
+      "player_referrals": [
+        "klaus",
+        "eloise",
+        "lizzie"
+      ],
+      "zone": "dorsoduro",
+      "inspiration": {
+        "name": "François Pinault",
+        "basis": "Collezionismo e spazi culturali veneziani. Le fragilità e i segreti sono invenzioni.",
+        "url": "https://www.pinaultcollection.com/palazzograssi/en/pinault-collection-venice"
+      },
+      "topics": {
+        "respect": "Esperienze autentiche",
+        "insult": "Pretendere beni senza scambio",
+        "request": "Chiedere una prova o una possibilità",
+        "repair": "Ammettere un errore e proporre una riparazione"
+      }
+    },
+    "alberic": {
+      "id": "alberic",
+      "name": "Alberic",
+      "status": "Personaggio e biografia proposti",
+      "role": "Fondatore e competitore",
+      "activation": "incontro",
+      "biography": "Alberic ha costruito la propria immagine trasformando ogni risultato in una prova di superiorità personale. Nel vecchio mondo finanziava imprese e si attribuiva la capacità di riconoscere il talento prima degli altri. Nel palazzo veneziano conserva trofei, simulatori e installazioni sportive. La Regata gli offre una misura pubblica che l’immortalità non riesce a rendere irrilevante. Preferisce perdere contro qualcuno che considera degno piuttosto che essere ignorato, ma non lo ammetterebbe mai. Sei mesi prima ha incaricato Brago di preparare un percorso per dimostrare un nuovo sistema nautico. Il danno al pontile ha trasformato la dimostrazione in un problema da chiudere rapidamente. Lizzie ha mediato e Alberic si è convinto di aver già fatto abbastanza. Quando il protagonista arriva, vede un possibile talento da sponsorizzare e un’occasione per sottrarlo a Marla. Può essere generoso se pensa che la vittoria lo rappresenterà. Una contraddizione privata lo incuriosisce; un’umiliazione davanti agli ospiti può fargli ritirare ogni aiuto.",
+      "goals": [
+        "Dimostrare il proprio talento come sponsor.",
+        "Evitare che Marla o Brago lo facciano apparire impotente."
+      ],
+      "vulnerabilities": [
+        "Essere contraddetto in pubblico.",
+        "Vedere un proprio concorrente scegliere un altro sponsor."
+      ],
+      "private_knowledge": [
+        "La compensazione ai Porci non è stata completata.",
+        "La dimostrazione nautica aveva per lui un valore di prestigio superiore all’utilità tecnica."
+      ],
+      "initial_knowledge": [
+        "Conosce il lavoro affidato a Brago e la mediazione di Lizzie.",
+        "Sa che Klaus ha fornito il sistema; non conosce tutte le sue omissioni tecniche."
+      ],
+      "relationships": [
+        {
+          "target": "marla",
+          "belief": "Usa il gusto per evitare confronti misurabili."
+        },
+        {
+          "target": "brago",
+          "belief": "Continua a chiedere dopo aver già ottenuto qualcosa."
+        },
+        {
+          "target": "klaus",
+          "belief": "È brillante, ma deve assumersi le proprie responsabilità."
+        },
+        {
+          "target": "lizzie",
+          "belief": "La sua mediazione impedisce ai conflitti di diventare pubblici."
+        }
+      ],
+      "voice": "Diretto e competitivo. Fa domande su ciò che il protagonista sa fare. Interrompe quando sente una scusa, ma sa apprezzare una risposta ferma.",
+      "allowed_actions": [
+        "grant_sponsorship",
+        "grant_engine_access",
+        "demand_exclusivity",
+        "assign_authorized_task",
+        "refer_to_klaus",
+        "decline_request"
+      ],
+      "grant_conditions": "Un’ambizione compatibile con la sua immagine o una prova completata possono aprire il patrocinio. L’esclusività è una condizione esplicita, non retroattiva.",
+      "limits": "Non controlla tutte le istituzioni di Venezia. Non trasferisce beni di Marla e non conosce automaticamente gli accordi privati del giocatore.",
+      "player_referrals": [
+        "klaus",
+        "marla",
+        "lizzie"
+      ],
+      "zone": "san_polo",
+      "inspiration": {
+        "name": "Larry Ellison",
+        "basis": "Imprenditoria tecnologica e regate. Rivalità e accordi del gioco sono inventati.",
+        "url": "https://www.oracle.com/uk/corporate/executives/larry-ellison/"
+      },
+      "topics": {
+        "respect": "Competizione leale",
+        "insult": "Umiliazione pubblica",
+        "request": "Chiedere una prova o una possibilità",
+        "repair": "Ammettere un errore e proporre una riparazione"
+      }
+    },
+    "klaus": {
+      "id": "klaus",
+      "name": "Klaus",
+      "status": "Biografia proposta da armonizzare con il canone",
+      "role": "Fondatore e inventore tecno mistico",
+      "activation": "incontro",
+      "biography": "Klaus ha partecipato alla costruzione del mondo governato da N convinto che la tecnica potesse correggere i limiti delle decisioni umane. A Venezia continua a cercare dimostrazioni, anche quando nessuno gli ha più chiesto di risolvere un problema. Vive tra server, acquari luminosi e componenti esposti come reliquie. Ogni esperimento gli permette di immaginare di essere ancora necessario. Sei mesi prima ha fornito ad Alberic un regolatore sperimentale per una dimostrazione nautica. Il dispositivo ha risposto male in una condizione che non aveva verificato; Klaus conserva il rapporto tecnico e preferisce parlare di un problema di utilizzo. Non vuole ferire il protagonista, ma può sottovalutarne il rischio pur di ottenere una prova utile. Chi ascolta davvero la sua teoria può ricevere attenzione e assistenza. Chi gli chiede soltanto un motore più veloce viene trattato come qualcuno incapace di comprendere il suo lavoro. Una domanda competente e scomoda può irritarlo oppure convincerlo a proporre una soluzione più prudente.",
+      "goals": [
+        "Ottenere una dimostrazione della propria teoria.",
+        "Sentirsi ancora necessario in un mondo delegato a N."
+      ],
+      "vulnerabilities": [
+        "L’accusa di non verificare i rischi delle invenzioni.",
+        "Un interlocutore che comprenda il suo lavoro senza trattarlo come un fornitore."
+      ],
+      "private_knowledge": [
+        "Il precedente regolatore aveva un difetto non risolto prima della dimostrazione.",
+        "Conserva un rapporto tecnico che gli altri non hanno letto."
+      ],
+      "initial_knowledge": [
+        "Conosce il proprio esperimento e il danno segnalato.",
+        "Non sa che cosa Brago abbia raccontato al protagonista."
+      ],
+      "relationships": [
+        {
+          "target": "alberic",
+          "belief": "Vuole risultati spettacolari prima che gli esperimenti siano maturi."
+        },
+        {
+          "target": "marla",
+          "belief": "Ha risorse utili, ma guarda gli oggetti come proprietà."
+        },
+        {
+          "target": "rosko",
+          "belief": "Conserva componenti del passato di cui non capisce tutte le possibilità."
+        }
+      ],
+      "voice": "Entusiasta, tecnico quando serve, capace di parlare chiaro. Usa la trascendenza per giustificare le proprie ossessioni, ma sa riconoscere una domanda intelligente.",
+      "allowed_actions": [
+        "grant_handling_upgrade",
+        "offer_authorized_experiment",
+        "assign_component_retrieval",
+        "share_known_technical_information",
+        "refer_to_rosko",
+        "decline_request"
+      ],
+      "grant_conditions": "Una richiesta sostenuta da comprensione o un componente ottenuto può aprire l’intervento. Il rischio e gli effetti sono quelli autorizzati dal gioco.",
+      "limits": "Non cambia la fisica con il dialogo e non inventa dispositivi non implementati. I segreti tecnici non si rivelano senza una ragione.",
+      "player_referrals": [
+        "rosko",
+        "alberic",
+        "marla"
+      ],
+      "zone": "castello",
+      "inspiration": {
+        "name": "Jeff Bezos",
+        "basis": "Imprese tecnologiche e immaginazione di infrastrutture future. Il tecnomisticismo è inventato.",
+        "url": "https://www.blueorigin.com/about-blue"
+      },
+      "topics": {
+        "respect": "Comprensione e sicurezza",
+        "insult": "Ridicolizzare il lavoro",
+        "request": "Chiedere una prova o una possibilità",
+        "repair": "Ammettere un errore e proporre una riparazione"
+      }
+    },
+    "eloise": {
+      "id": "eloise",
+      "name": "Eloise",
+      "status": "Biografia proposta da armonizzare con il canone",
+      "role": "Fondatrice e organizzatrice delle feste",
+      "activation": "incontro",
+      "biography": "Eloise ha costruito il proprio potere riconoscendo ciò che le persone volevano mostrare di sé e offrendo una scena su cui farlo. A Venezia il suo palazzo cambia funzione continuamente: una camera diventa teatro, una piscina sala da pranzo. Il movimento impedisce di vedere quanto poco cambi davvero. Non teme tanto un giudizio negativo quanto una festa a cui nessuno senta il bisogno di andare. Durante la dimostrazione nautica di sei mesi prima aveva organizzato uno spettacolo sul canale vicino al pontile dei Porci. Ricorda che qualcuno tentò di interromperla e che lei scelse di continuare, senza sapere con precisione che cosa stesse accadendo. Il protagonista può interessarle come volto nuovo e racconto da portare ai suoi ospiti. Può aprirgli le porte purché lui accetti di esporsi. Una confidenza personale la colpisce, ma il desiderio di trasformarla in spettacolo può prevalere sul rispetto per chi gliel’ha affidata.",
+      "goals": [
+        "Rendere la propria festa il centro della città.",
+        "Scoprire un volto nuovo prima che lo facciano gli altri."
+      ],
+      "vulnerabilities": [
+        "Essere esclusa da una storia che tutti raccontano.",
+        "La sensazione che gli ospiti preferiscano qualcosa di autentico lontano dal suo palazzo."
+      ],
+      "private_knowledge": [
+        "Durante la vecchia dimostrazione qualcuno chiese di interrompere lo spettacolo e lei rifiutò.",
+        "Non sa se quella decisione abbia peggiorato le conseguenze."
+      ],
+      "initial_knowledge": [
+        "Conosce gli invitati alle proprie feste e il ruolo pubblico di Alberic nella dimostrazione.",
+        "Non conosce il difetto del regolatore né tutti i dettagli della compensazione."
+      ],
+      "relationships": [
+        {
+          "target": "marla",
+          "belief": "Vuole essere guardata senza ammettere di averne bisogno."
+        },
+        {
+          "target": "lizzie",
+          "belief": "Al bar succedono cose che vorrei portare nelle mie feste."
+        },
+        {
+          "target": "alberic",
+          "belief": "La sua ambizione è un ottimo spettacolo."
+        }
+      ],
+      "voice": "Rapida, brillante, curiosa. Cambia registro tra pubblico e privato. Evita di renderla una caricatura fatta soltanto di slogan social.",
+      "allowed_actions": [
+        "grant_party_invitation",
+        "grant_training_access",
+        "offer_public_introduction",
+        "request_authorized_public_act",
+        "share_known_information",
+        "decline_request"
+      ],
+      "grant_conditions": "Una promessa di partecipazione, un gesto pubblico o una relazione credibile può aprire un invito. Non basta recitare che lei è importante.",
+      "limits": "Non diffonde una confidenza senza registrare l’atto e i destinatari. Non sa ciò che non ha visto o sentito.",
+      "player_referrals": [
+        "marla",
+        "lizzie",
+        "alberic"
+      ],
+      "zone": "san_marco",
+      "inspiration": {
+        "name": "Richard Branson",
+        "basis": "Combinazione di musica, viaggi e intrattenimento. Personalità e condotte della Fondatrice sono inventate.",
+        "url": "https://com.prod.loyalty.virgin.com/branson-family/richard-branson"
+      },
+      "topics": {
+        "respect": "Contributo allo spettacolo",
+        "insult": "Disprezzare gli ospiti",
+        "request": "Chiedere una prova o una possibilità",
+        "repair": "Ammettere un errore e proporre una riparazione"
+      }
+    },
+    "rosko": {
+      "id": "rosko",
+      "name": "Rosko",
+      "status": "Biografia proposta da armonizzare con il canone",
+      "role": "Fondatore e collezionista del passato",
+      "activation": "incontro",
+      "biography": "Rosko possiede un palazzo in cui ha ricostruito un passato fatto di jukebox, flipper, automobili e telefoni. Mescola epoche e ricordi perché ciò che cerca è una sensazione, non una ricostruzione esatta. Nel vecchio mondo aveva accumulato risorse attraverso infrastrutture e distribuzione; ora compra da chi recupera oggetti che gli altri considerano rifiuti. I Porci sono tra i suoi fornitori. Con Brago ha un rapporto di scambio che continua anche quando i Fondatori preferiscono ignorare la comunità del fango. Dopo il danno al pontile ha acquistato alcuni pezzi danneggiati e conserva immagini riprese da una vecchia camera fissa. Non ha ricostruito la causa tecnica dell’incidente. Il protagonista gli ricorda qualcuno che ha ancora un motivo per partire. Può aiutarlo se trova in lui un interlocutore disposto ad ascoltare, ma reagisce male quando capisce di essere trattato come un deposito di ricambi. La nostalgia può aprirlo, mentre la curiosità indiscreta può chiuderlo.",
+      "goals": [
+        "Condividere il proprio passato con qualcuno che lo ascolti.",
+        "Conservare oggetti e rapporti prima che vengano sostituiti."
+      ],
+      "vulnerabilities": [
+        "Essere considerato inutile o ridicolo.",
+        "Accorgersi che nessuno distingue i suoi ricordi da quelli delle macchine."
+      ],
+      "private_knowledge": [
+        "Le immagini della dimostrazione sono ancora nel suo archivio.",
+        "Un oggetto a cui attribuisce grande valore affettivo è una replica; lo sa e non vuole discuterne."
+      ],
+      "initial_knowledge": [
+        "Conosce Brago come fornitore e il danno al pontile.",
+        "Sa quali componenti possiede, non che cosa Klaus abbia omesso nel rapporto tecnico."
+      ],
+      "relationships": [
+        {
+          "target": "brago",
+          "belief": "È difficile, ma conosce il valore del recupero."
+        },
+        {
+          "target": "klaus",
+          "belief": "Vuole smontare cose che per me meritano di restare intere."
+        },
+        {
+          "target": "lizzie",
+          "belief": "È una delle poche persone che ascolti senza voler subito qualcosa."
+        }
+      ],
+      "voice": "Narrativo e ironico. Ricordi concreti, qualche contraddizione riconoscibile. Non deve impedire il progresso con racconti interminabili.",
+      "allowed_actions": [
+        "grant_available_component",
+        "share_route_knowledge",
+        "share_authorized_archive_item",
+        "assign_authorized_recovery",
+        "refer_to_brago",
+        "decline_request"
+      ],
+      "grant_conditions": "Ascolto credibile, uno scambio verificato o la restituzione di un oggetto possono aprire una concessione. Le risorse devono essere ancora disponibili.",
+      "limits": "Le immagini mostrano soltanto ciò che la camera poteva riprendere. Non risolvono automaticamente l’incidente e non costituiscono una missione obbligatoria.",
+      "player_referrals": [
+        "brago",
+        "klaus",
+        "lizzie"
+      ],
+      "zone": "cannaregio",
+      "inspiration": {
+        "name": "Steve Wozniak",
+        "basis": "Ingegneria, educazione e rapporto con i primi computer. Nostalgia e segreti sono inventati.",
+        "url": "https://woz.org/about/"
+      },
+      "topics": {
+        "respect": "Memoria e cura degli oggetti",
+        "insult": "Trattare i ricordi come rottami",
+        "request": "Chiedere una prova o una possibilità",
+        "repair": "Ammettere un errore e proporre una riparazione"
+      }
+    }
+  },
+  "missions": [
+    {
+      "id": "m_lizzie",
+      "owner": "lizzie",
+      "title": "Ospite in difficoltà",
+      "target": "santa_croce",
+      "description": "Scortare un robot musicista al rifugio del bar.",
+      "good_choice": "proteggere",
+      "bad_choice": "Consegnarlo alla festa per un compenso.",
+      "rewards": [
+        "invito"
+      ],
+      "trust_required": 1,
+      "deadline": 70,
+      "cost_hours": 3
+    },
+    {
+      "id": "m_marla",
+      "owner": "marla",
+      "title": "La memoria non è in vendita",
+      "target": "cannaregio",
+      "description": "Recuperare una bobina affidata a Rosko e restituirla senza copiarla.",
+      "good_choice": "restituire",
+      "bad_choice": "Pubblicare la bobina come attrazione.",
+      "rewards": [
+        "scafo"
+      ],
+      "trust_required": 1,
+      "deadline": 70,
+      "cost_hours": 3
+    },
+    {
+      "id": "m_alberic",
+      "owner": "alberic",
+      "title": "Il sigillo della scuderia",
+      "target": "castello",
+      "description": "Ritirare un sigillo diagnostico autentico all’Arsenale.",
+      "good_choice": "verificare",
+      "bad_choice": "Falsificare il sigillo per saltare la prova.",
+      "rewards": [
+        "scuderia"
+      ],
+      "trust_required": 1,
+      "deadline": 70,
+      "cost_hours": 3
+    },
+    {
+      "id": "m_klaus",
+      "owner": "klaus",
+      "title": "Regolatore sicuro",
+      "target": "cannaregio",
+      "description": "Recuperare un regolatore standard e sottoporlo a controllo.",
+      "good_choice": "controllare",
+      "bad_choice": "Montare il pezzo senza controlli.",
+      "rewards": [
+        "motore"
+      ],
+      "trust_required": 1,
+      "deadline": 70,
+      "cost_hours": 3
+    },
+    {
+      "id": "m_eloise",
+      "owner": "eloise",
+      "title": "Maschera senza padrone",
+      "target": "dorsoduro",
+      "description": "Recuperare una maschera scenica e chiedere il consenso del robot che la indossa.",
+      "good_choice": "consenso",
+      "bad_choice": "Sottrarre la maschera per lo spettacolo.",
+      "rewards": [
+        "invito",
+        "scuderia"
+      ],
+      "trust_required": 1,
+      "deadline": 70,
+      "cost_hours": 3
+    },
+    {
+      "id": "m_rosko",
+      "owner": "rosko",
+      "title": "Il jukebox sommerso",
+      "target": "castello",
+      "description": "Recuperare una memoria da un jukebox dismesso e conservarne i dati.",
+      "good_choice": "conservare",
+      "bad_choice": "Smontare la memoria e vendere i contatti.",
+      "rewards": [
+        "scafo"
+      ],
+      "trust_required": 1,
+      "deadline": 70,
+      "cost_hours": 3
+    },
+    {
+      "id": "m_brago",
+      "owner": "brago",
+      "title": "L’amplificatore dei Porci",
+      "target": "san_marco",
+      "description": "Recuperare l’amplificatore della comunità e restituirlo in laguna entro l’ora 48.",
+      "good_choice": "restituire",
+      "bad_choice": "Venderlo al mercato dei recuperi.",
+      "rewards": [
+        "amicizia"
+      ],
+      "trust_required": 0,
+      "deadline": 48,
+      "cost_hours": 3
+    }
+  ],
+  "relations": [
+    {
+      "from": "brago",
+      "to": "lizzie",
+      "label": "È una mediatrice affidabile, ma protegge chi frequenta il bar."
+    },
+    {
+      "from": "brago",
+      "to": "alberic",
+      "label": "Mi deve ancora qualcosa e non voglio dipendere da lui."
+    },
+    {
+      "from": "brago",
+      "to": "rosko",
+      "label": "Compra ricambi dai nostri recuperi e conosce il pontile."
+    },
+    {
+      "from": "lizzie",
+      "to": "brago",
+      "label": "Può rispettare una parola data, ma non accetta di perdere la faccia."
+    },
+    {
+      "from": "lizzie",
+      "to": "marla",
+      "label": "Il suo aiuto non è mai completamente gratuito."
+    },
+    {
+      "from": "lizzie",
+      "to": "eloise",
+      "label": "Le sue feste portano clienti e problemi."
+    },
+    {
+      "from": "marla",
+      "to": "lizzie",
+      "label": "Mi deve un favore, ma la sua indipendenza è ciò che mi interessa."
+    },
+    {
+      "from": "marla",
+      "to": "alberic",
+      "label": "Vuole battermi anche quando non stiamo gareggiando."
+    },
+    {
+      "from": "marla",
+      "to": "klaus",
+      "label": "È utile, ma considera le mie proprietà materia per i suoi esperimenti."
+    },
+    {
+      "from": "marla",
+      "to": "eloise",
+      "label": "Sa trasformare un mio gesto in una storia pubblica."
+    },
+    {
+      "from": "alberic",
+      "to": "marla",
+      "label": "Usa il gusto per evitare confronti misurabili."
+    },
+    {
+      "from": "alberic",
+      "to": "brago",
+      "label": "Continua a chiedere dopo aver già ottenuto qualcosa."
+    },
+    {
+      "from": "alberic",
+      "to": "klaus",
+      "label": "È brillante, ma deve assumersi le proprie responsabilità."
+    },
+    {
+      "from": "alberic",
+      "to": "lizzie",
+      "label": "La sua mediazione impedisce ai conflitti di diventare pubblici."
+    },
+    {
+      "from": "klaus",
+      "to": "alberic",
+      "label": "Vuole risultati spettacolari prima che gli esperimenti siano maturi."
+    },
+    {
+      "from": "klaus",
+      "to": "marla",
+      "label": "Ha risorse utili, ma guarda gli oggetti come proprietà."
+    },
+    {
+      "from": "klaus",
+      "to": "rosko",
+      "label": "Conserva componenti del passato di cui non capisce tutte le possibilità."
+    },
+    {
+      "from": "eloise",
+      "to": "marla",
+      "label": "Vuole essere guardata senza ammettere di averne bisogno."
+    },
+    {
+      "from": "eloise",
+      "to": "lizzie",
+      "label": "Al bar succedono cose che vorrei portare nelle mie feste."
+    },
+    {
+      "from": "eloise",
+      "to": "alberic",
+      "label": "La sua ambizione è un ottimo spettacolo."
+    },
+    {
+      "from": "rosko",
+      "to": "brago",
+      "label": "È difficile, ma conosce il valore del recupero."
+    },
+    {
+      "from": "rosko",
+      "to": "klaus",
+      "label": "Vuole smontare cose che per me meritano di restare intere."
+    },
+    {
+      "from": "rosko",
+      "to": "lizzie",
+      "label": "È una delle poche persone che ascolti senza voler subito qualcosa."
+    }
+  ]
+}
