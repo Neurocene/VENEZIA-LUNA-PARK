@@ -5,11 +5,11 @@ import streamlit as st
 import engine
 
 # ---------------------------------------------------------
-# 1. PREPARIAMO IL NOSTRO BANCO DA LAVORO (PAGINA WEB)
+# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE PAGINA)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
 
-# Creiamo la scatola 'assets' per tenere tutte le nostre figurine e foto!
+# Assicuriamoci che la scatola 'assets' per le foto esista!
 if not os.path.exists("assets"):
     os.makedirs("assets")
 
@@ -20,7 +20,7 @@ def carica_mondo():
 config = carica_mondo()
 
 # ---------------------------------------------------------
-# 2. IL CANNOCCHIALE MAGICO (Cerca qualsiasi immagine in assets)
+# 2. IL DETECTIVE DELLE FOTO (Cerca immagini .png o .jpg)
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -34,7 +34,7 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# Funzione per salvare la foto dal caricatore direttamente sul PC
+# Funzione per salvare le foto caricate dall'interfaccia sul PC
 def salva_foto_caricata(file_caricato, nome_destinazione):
     if file_caricato:
         est = file_caricato.name.split(".")[-1].lower()
@@ -44,7 +44,9 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         st.success(f"🎉 Foto per '{nome_destinazione}' salvata con successo!")
         st.rerun()
 
-# SFONDO PER LA PORTA D'INGRESSO
+# ---------------------------------------------------------
+# 3. SFONDO DI COPERTINA A TUTTO SCHERMO ALL'INGRESSO
+# ---------------------------------------------------------
 def imposta_sfondo_copertina():
     percorso_copertina = trova_foto("copertina")
     if percorso_copertina:
@@ -71,7 +73,7 @@ def imposta_sfondo_copertina():
         )
 
 # ---------------------------------------------------------
-# 3. LA PORTA SEGRETA CON PASSWORD
+# 4. LA PORTA SEGRETA CON LA PASSWORD
 # ---------------------------------------------------------
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
@@ -80,7 +82,7 @@ if not st.session_state.autenticato:
     imposta_sfondo_copertina()
 
     st.title("🎭 Venezia Luna Park — Accesso Riservato")
-    st.write("🔒 **Inserisci la password segreta per accedere al laboratorio:**")
+    st.write("🔒 **Inserisci la password segreta per accedere al laboratorio del gioco:**")
     
     password_inserita = st.text_input("Password segreta:", type="password")
     
@@ -94,7 +96,7 @@ if not st.session_state.autenticato:
     st.stop()
 
 # ---------------------------------------------------------
-# 4. AVVIAMO IL MOTORE DEL GIOCO
+# 5. AVVIAMO IL MOTORE DEL GIOCO
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -102,7 +104,7 @@ if "game_state" not in st.session_state:
 s = st.session_state.game_state
 engine.timer(s, config)
 
-# IL CRUSCOTTO DEL GIOCATORE (In alto)
+# IL CRUSCOTTO DEL GIOCATORE (IN ALTO)
 col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("⏳ Ora Narrativa", f"{s['hour']}/72")
 col2.metric("⏱ Minuti Reali", f"{int(s['active_seconds'] // 60)}/120")
@@ -115,7 +117,7 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
 
 st.divider()
 
-# LA BARRA LATERALE PER VEDERE IL PORCO
+# LA BARRA LATERALE PER IL PORCO
 with st.sidebar:
     st.header("🐷 Stato del Porco")
     st.write(f"**Relazione:** {s['pig']}")
@@ -150,7 +152,7 @@ with tab_gioca:
         st.info("🌊 Ti svegli ai margini della laguna dopo una grande piena. Davanti a te c'è Brago.")
         st.divider()
 
-        # 🐖 LA PROPOSTA DI BRAGO CON FOTO E UPLOAD AFFIANCATO!
+        # 🐖 LA PROPOSTA DI BRAGO CON FOTO E UPLOAD AFFIANCATO
         st.subheader("🐖 La Proposta di Brago")
         
         col_brago_foto, col_brago_testo = st.columns([1, 2])
@@ -158,7 +160,7 @@ with tab_gioca:
         with col_brago_foto:
             mostra_foto("brago", "Brago (Lagoon Pig)")
             st.caption("📸 **Vuoi cambiare la foto di Brago?**")
-            nuova_foto_brago = st.file_uploader("Carica una nuova foto per Brago", type=["png", "jpg", "jpeg"], key="up_brago")
+            nuova_foto_brago = st.file_uploader("Carica foto per Brago", type=["png", "jpg", "jpeg"], key="up_brago")
             if st.button("💾 Salva Foto Brago", key="btn_brago"):
                 salva_foto_caricata(nuova_foto_brago, "brago")
 
@@ -195,25 +197,26 @@ with tab_gioca:
             st.rerun()
 
     else:
+        # 📍 SEZIONE IN ALTO: NOME LUOGO + FOTO DELLO SCENARIO + TASTO DI UPLOAD
         zona_id = s['location']
         nome_zona = config['zones'][zona_id]['name']
         padrone_casa_id = config['zones'][zona_id]['owner']
         
-        # 📍 SEZIONE LUOGO IN ALTO CON SFONDO E TASTO UPLOAD!
         st.subheader(f"📍 Ti trovi a: {nome_zona}")
         
+        # Gestione sfondi per il bar di Lizzie (Esterno, Interno, Suite)
         chiave_sfondo = padrone_casa_id
         if padrone_casa_id == "lizzie":
             scelta_interno = st.radio("🏢 Dove vuoi andare?", ["Esterno Bar", "Interno Bar", "Suite Riservata"], horizontal=True)
             chiave_sfondo = "lizzie_esterno" if scelta_interno == "Esterno Bar" else "lizzie_interno" if scelta_interno == "Interno Bar" else "lizzie_suite"
 
-        # Mostra la foto del Luogo
-        mostra_foto(chiave_sfondo, f"Scenario di: {nome_zona}")
+        # 🖼️ MOSTRA LA FOTO DEL LUOGO IN ALTO
+        mostra_foto(chiave_sfondo, f"Scenario attuale: {nome_zona}")
         
-        # 📸 CARICATORE FOTO PER IL LUOGO ATTUALE
-        with st.expander(f"🖼️ Clicca qui per caricare/cambiare la foto per {nome_zona}"):
-            foto_luogo_nuova = st.file_uploader(f"Carica una nuova foto per {nome_zona}", type=["png", "jpg", "jpeg"], key=f"up_zone_{chiave_sfondo}")
-            if st.button(f"💾 Salva Foto per {nome_zona}", key=f"btn_zone_{chiave_sfondo}"):
+        # 📸 PANNELLO PER CARICARE / CAMBIARE LA FOTO DI QUESTO LUOGO
+        with st.expander(f"🖼️ Carica o cambia la foto di {nome_zona}"):
+            foto_luogo_nuova = st.file_uploader(f"Scegli una nuova immagine dal tuo computer per {nome_zona}:", type=["png", "jpg", "jpeg"], key=f"up_zone_{chiave_sfondo}")
+            if st.button(f"💾 Salva ed applica foto a {nome_zona}", key=f"btn_zone_{chiave_sfondo}"):
                 salva_foto_caricata(foto_luogo_nuova, chiave_sfondo)
 
         st.divider()
@@ -284,10 +287,10 @@ with tab_relazioni:
 with tab_agenti:
     st.subheader("💬 Gli Agenti parlano tra loro")
 
-# --- STANZA 6: IL CARICATORE COMPLETO DI FOTO ---
+# --- STANZA 6: UPLOAD FOTO GENERALE ---
 with tab_diag:
-    st.subheader("🛠️ Carica Qualsiasi Foto nel Gioco")
-    st.caption("Scegli dal menu a tendina quale elemento vuoi aggiornare!")
+    st.subheader("🛠️ Carica qualsiasi Foto nel Gioco")
+    st.caption("Seleziona dal menu a tendina quale foto desideri sostituire:")
     
     opzioni_target = {
         "Foto di Copertina Sfondo": "copertina",
