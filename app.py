@@ -62,16 +62,13 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         percorso_finale = os.path.join("assets", f"{nome_destinazione}.{est}")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Foto salvata con successo come '{nome_destinazione}.{est}'!")
+        st.success(f"🎉 Foto salvata come '{nome_destinazione}.{est}'!")
         st.rerun()
 
-# FUNZIONE MAGICA PER AGGIORNARE LA BIO DEL PERSONAGGIO
-def salva_bio_personaggio(id_agente, nuova_bio):
-    config['agents'][id_agente]["biography"] = nuova_bio
+# SALVA MONDO NEL FILE JSON
+def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
-    st.success(f"🎉 Biografia e comportamento di {config['agents'][id_agente]['name']} aggiornati!")
-    st.rerun()
 
 # SFONDO PERFETTO ALL'INGRESSO
 def imposta_sfondo_copertina():
@@ -145,7 +142,7 @@ if not st.session_state.video_intro_visto:
     
     video_riprodotto = riproduci_video("VENEZIA LUNA PARK - thebeginning1")
     if not video_riprodotto:
-        st.info("ℹ️️ Il video `assets/VENEZIA LUNA PARK - thebeginning1.mp4` non è stato trovato. Puoi comunque proseguire cliccando il tasto sotto!")
+        st.info("ℹ️ Il video `assets/VENEZIA LUNA PARK - thebeginning1.mp4` non è stato trovato. Puoi comunque proseguire cliccando il tasto sotto!")
 
     if st.button("▶ APRI LA MAPPA DI VENEZIA", use_container_width=True):
         st.session_state.video_intro_visto = True
@@ -181,11 +178,56 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
 
 st.divider()
 
-# BARRA LATERALE
+# ---------------------------------------------------------
+# BARRA LATERALE (SIDEBAR) — LABORATORIO AGENTI AI & STRUMENTI
+# ---------------------------------------------------------
 with st.sidebar:
     st.header("🎯 Missione Principale")
     st.write("📩 **Consegna il messaggio a Lizzie al Lizzie Bar!**")
     st.write(f"**Pass per il Bar:** {'✅ Ottenuto!' if 'pass_lizzie' in s['inventory'] else '❌ Mancante'}")
+    st.divider()
+
+    # 🛠️ RASTRELLIERA LATERALE PER CREARE E MODIFICARE GLI AGENTI AI
+    st.header("🛠️ Laboratorio Agenti AI")
+    st.caption("Crea o modifica i personaggi direttamente da qui!")
+
+    opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
+    scelta_agente = st.selectbox("Seleziona Agente da Modificare/Creare:", opzioni_agenti)
+
+    if scelta_agente == "➕ CREA NUOVO AGENTE":
+        st.markdown("#### 🆕 Crea un Nuovo Agente AI")
+        nuovo_id = st.text_input("ID Segreto (es. `marco`):").strip().lower()
+        nuovo_nome = st.text_input("Nome Personaggio (es. `Marco Gondoliere`):")
+        nuova_bio = st.text_area("Biografia e Comportamento:", placeholder="Scrivi qui la storia e la personalità dell'Agente AI...")
+        zona_assegnata = st.selectbox("Zona di Venezia:", list(config['zones'].keys()))
+
+        if st.button("✨ CREA E AGGIUNGI AGENTE AL GIOCO"):
+            if nuovo_id and nuovo_nome:
+                config['agents'][nuovo_id] = {
+                    "name": nuovo_nome,
+                    "biography": nuova_bio,
+                    "location": zona_assegnata
+                }
+                # Inizializza fiducia nel game_state
+                if nuovo_id not in s['trust']:
+                    s['trust'][nuovo_id] = 50
+                salva_configurazione_mondo()
+                st.success(f"🎉 Agente '{nuovo_nome}' creato con successo!")
+                st.rerun()
+            else:
+                st.error("❌ Compila almeno l'ID segreto e il Nome!")
+
+    else:
+        ag_dati = config['agents'][scelta_agente]
+        st.markdown(f"#### ✏️ Modifica {ag_dati['name']}")
+        bio_modificata = st.text_area("Biografia & Istruzioni AI:", value=ag_dati.get("biography", ""), height=150)
+        
+        if st.button("💾 Salva Modifiche Agente"):
+            config['agents'][scelta_agente]["biography"] = bio_modificata
+            salva_configurazione_mondo()
+            st.success(f"🎉 Biografia di '{ag_dati['name']}' salvata!")
+            st.rerun()
+
     st.divider()
     if st.button("🔒 Esci e torna alla Copertina"):
         st.session_state.autenticato = False
@@ -193,7 +235,9 @@ with st.sidebar:
         st.session_state.video_zona_visto = None
         st.rerun()
 
-# SCHEDE DELL'INTERFACCIA
+# ---------------------------------------------------------
+# SCHEDE DELL'INTERFACCIA CENTRALE
+# ---------------------------------------------------------
 tab_gioca, tab_mappa, tab_personaggi = st.tabs([
     "🎮 Gioca & Esplora", "🗺️ Mappa di Venezia", "👤 Diario Personaggi"
 ])
@@ -208,7 +252,7 @@ with tab_gioca:
             st.error(f"❌ GAME OVER: {s['status'].replace('_', ' ').upper()}")
             
     else:
-        st.write("## 🗺️️ Mappa Interattiva di Venezia")
+        st.write("## 🗺️ Mappa Interattiva di Venezia")
         st.caption("Fai clic su un quartiere per viaggiare, vedere il video e incontrare il personaggio!")
         
         # MAPPA INTERATTIVA SULLO SFONDO
@@ -273,7 +317,7 @@ with tab_gioca:
                     ag_nome = ag_dati['name']
                     col_ritratto, col_chat = st.columns([1, 3])
                     
-                    # COLONNA DI SINISTRA: FOTO + TASTO UPDATE BIO SOTTO OGNI PERSONAGGIO!
+                    # COLONNA DI SINISTRA: FOTO + TASTO UPDATE BIO SOTTO IL PERSONAGGIO
                     with col_ritratto:
                         mostra_foto(ag_id, f"Incontri: {ag_nome}")
                         
@@ -283,18 +327,20 @@ with tab_gioca:
                             if st.button(f"💾 Salva Foto {ag_nome}", key=f"btn_ag_{ag_id}"):
                                 salva_foto_caricata(foto_ag_nuova, ag_id)
                         
-                        # 📝 UPDATE BIO DIRETTAMENTE SOTTO IL PERSONAGGIO!
-                        with st.expander(f"📝 UPDATE BIO ({ag_nome})"):
-                            st.caption("Scrivi qui la storia e il comportamento dell'Agente AI:")
-                            testo_bio = st.text_area("Biografia e Ruolo:", value=ag_dati.get("biography", ""), key=f"bio_txt_{ag_id}", height=150)
-                            if st.button(f"💾 Salva e Aggiorna Bio", key=f"btn_bio_{ag_id}"):
-                                salva_bio_personaggio(ag_id, testo_bio)
+                        # 📝 UPDATE BIO RAPIDO
+                        with st.expander(f"📝 Update Bio ({ag_nome})"):
+                            testo_bio = st.text_area("Biografia & Comportamento:", value=ag_dati.get("biography", ""), key=f"bio_txt_{ag_id}", height=120)
+                            if st.button(f"💾 Salva Bio Rapida", key=f"btn_bio_{ag_id}"):
+                                config['agents'][ag_id]["biography"] = testo_bio
+                                salva_configurazione_mondo()
+                                st.success(f"🎉 Biografia di {ag_nome} aggiornata!")
+                                st.rerun()
                     
                     # COLONNA DI DESTRA: CHAT CON L'AGENTE AI
                     with col_chat:
-                        st.write(f"### 🗣️ Stai parlando con: {ag_nome}")
-                        st.info(f"📜 **Comportamento & Ruolo Agente:**\n\n_{ag_dati.get('biography', 'Nessuna biografia impostata.')}_")
-                        st.write(f"**Livello di Fiducia:** {s['trust'][ag_id]}/100")
+                        st.write(f"### 🗣️️ Stai parlando con: {ag_nome}")
+                        st.info(f"📜 **Ruolo & Storia:**\n\n_{ag_dati.get('biography', 'Nessuna biografia impostata.')}_")
+                        st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id, 50)}/100")
                         
                         frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"txt_{ag_id}")
                         col_d1, col_d2, col_d3 = st.columns(3)
@@ -305,7 +351,7 @@ with tab_gioca:
                             st.rerun()
                             
                         if col_d2.button("🏎️ Chiedi Test Drive Gondola Turbo", key=f"test_{ag_id}"):
-                            if s['trust'][ag_id] >= 50:
+                            if s['trust'].get(ag_id, 50) >= 50:
                                 st.balloons()
                                 st.success(f"🎉 {ag_nome}: «Mi fido di te! Facciamo il test drive!» Hai superato la prova e ottenuto il Pass per il Lizzie Bar!")
                                 if "pass_lizzie" not in s['inventory']:
