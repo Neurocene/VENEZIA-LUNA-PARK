@@ -4,12 +4,10 @@ import base64
 import streamlit as st
 import engine
 
-# ---------------------------------------------------------
-# 1. IL NOSTRO CANTIERE (CONFIGURAZIONE PAGINA)
-# ---------------------------------------------------------
+# 1. PREPARIAMO LA PAGINA DEL GIOCO
 st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
 
-# Controlliamo se la cartella 'assets' esiste sul computer
+# Verifichiamo che la cartella 'assets' esista sul computer
 if not os.path.exists("assets"):
     os.makedirs("assets")
 
@@ -19,9 +17,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# ---------------------------------------------------------
-# 2. DETECTIVE PER TROVARE LE FOTO (.png o .jpg)
-# ---------------------------------------------------------
+# CANNOCCHIALE PER TROVARE LE FOTO (.png o .jpg)
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -34,14 +30,14 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# DETECTIVE PER TROVARE I VIDEO (.mp4)
+# CANNOCCHIALE PER TROVARE I VIDEO (.mp4)
 def trova_video(nome):
     percorso = os.path.join("assets", f"{nome}.mp4")
     if os.path.exists(percorso):
         return percorso
     return None
 
-# Funzione per salvare le foto caricate sul computer
+# SALVA-FOTO RAPIDO DALL'INTERFACCIA
 def salva_foto_caricata(file_caricato, nome_destinazione):
     if file_caricato:
         est = file_caricato.name.split(".")[-1].lower()
@@ -51,9 +47,7 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         st.success(f"🎉 Foto per '{nome_destinazione}' salvata!")
         st.rerun()
 
-# ---------------------------------------------------------
-# 3. SFONDO COPERTINA PULITO (SENZA SCRITTE SUPERFLUE)
-# ---------------------------------------------------------
+# SFONDO PERFETTO A TUTTO SCHERMO PER LA COPERTINA
 def imposta_sfondo_copertina():
     percorso_copertina = trova_foto("copertina")
     if percorso_copertina:
@@ -62,6 +56,7 @@ def imposta_sfondo_copertina():
         st.markdown(
             f"""
             <style>
+            /* Mette la foto di copertina a tutto schermo senza ripetizioni */
             .stApp {{
                 background-image: url("data:image/png;base64,{encoded_string}");
                 background-size: cover;
@@ -69,14 +64,25 @@ def imposta_sfondo_copertina():
                 background-repeat: no-repeat;
                 background-attachment: fixed;
             }}
-            /* Mette lo spazio password e pulsante in basso al centro */
+            /* Nasconde l'intestazione vuota in alto */
+            header {{visibility: hidden;}}
+            /* Spinge lo spazio password in fondo alla pagina */
             .main .block-container {{
-                padding-top: 55vh;
+                padding-top: 65vh;
             }}
-            .stTextInput, .stButton {{
-                background-color: rgba(0, 0, 0, 0.85);
-                padding: 10px;
-                border-radius: 12px;
+            /* Rende la casella password e il pulsante scuri e ben visibili sopra la foto */
+            .stTextInput input {{
+                background-color: rgba(0, 0, 0, 0.85) !important;
+                color: white !important;
+                border-radius: 10px;
+                border: 2px solid #FFD700;
+            }}
+            .stButton button {{
+                background-color: #FFD700 !important;
+                color: black !important;
+                font-weight: bold !important;
+                border-radius: 10px;
+                font-size: 18px !important;
             }}
             </style>
             """,
@@ -84,7 +90,7 @@ def imposta_sfondo_copertina():
         )
 
 # ---------------------------------------------------------
-# 4. STAZIONE 1: PRIMA PAGINA (SOLO PASSWORD ED ENTRA IN BASSO)
+# STAZIONE 1: PRIMA PAGINA (SOLO FOTO DI COPERTINA E PASSWORD IN BASSO)
 # ---------------------------------------------------------
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
@@ -96,12 +102,13 @@ if "video_zona_visto" not in st.session_state:
     st.session_state.video_zona_visto = None
 
 if not st.session_state.autenticato:
+    # Mettiamo lo sfondo a tutto schermo!
     imposta_sfondo_copertina()
 
-    # Spazio per la password in basso a tutto schermo
+    # Spazio per la password in basso al centro della foto
     col_p1, col_p2, col_p3 = st.columns([1, 2, 1])
     with col_p2:
-        password_inserita = st.text_input("", type="password", placeholder="🔒 Inserisci qui la password...")
+        password_inserita = st.text_input("", type="password", placeholder="🔒 Inserisci la password segreta...")
         if st.button("🚪 ENTRA", use_container_width=True):
             if password_inserita == "venezia2026": 
                 st.session_state.autenticato = True
@@ -111,7 +118,7 @@ if not st.session_state.autenticato:
     st.stop()
 
 # ---------------------------------------------------------
-# 5. STAZIONE 2: VIDEO INIZIALE DI INTRODUZIONE
+# STAZIONE 2: VIDEO INIZIALE DI INTRODUZIONE
 # ---------------------------------------------------------
 if not st.session_state.video_intro_visto:
     st.markdown("## 🎬 Introduzione al Gioco")
@@ -128,7 +135,7 @@ if not st.session_state.video_intro_visto:
     st.stop()
 
 # ---------------------------------------------------------
-# 6. MOTORE DEL GIOCO
+# MOTORE DEL GIOCO E MAPPA
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -136,14 +143,9 @@ if "game_state" not in st.session_state:
 s = st.session_state.game_state
 engine.timer(s, config)
 
-# ---------------------------------------------------------
-# 7. BARRA IN ALTO (METRICHE)
-# ---------------------------------------------------------
 zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
 padrone_casa_id = config['zones'][zona_id]['owner']
-
-chiave_luogo = f"{padrone_casa_id}_luogo"
 
 col1, col2, col_luogo, col4, col5 = st.columns([1, 1, 2, 1, 1])
 col1.metric("⏳ Ora Narrativa", f"{s['hour']}/72")
@@ -187,7 +189,7 @@ with tab_gioca:
             st.error(f"❌ GAME OVER: {s['status'].replace('_', ' ').upper()}")
             
     else:
-        # STAZIONE 3: MAPPA INTERATTIVA CON I QUARTIERI CLICCABILI
+        # MAPPA INTERATTIVA CON I QUARTIERI CLICCABILI
         st.write("## 🗺️ Mappa Interattiva di Venezia")
         st.caption("Fai clic su un quartiere per viaggiare!")
         
@@ -203,7 +205,7 @@ with tab_gioca:
                     background-image: url("data:image/png;base64,{enc_map}");
                     background-size: cover;
                     background-position: center;
-                    min-height: 400px;
+                    min-height: 480px;
                     padding: 30px;
                     border-radius: 15px;
                     border: 3px solid #FFD700;
@@ -223,16 +225,15 @@ with tab_gioca:
             nome_quartiere = config['zones'][n_id]['name']
             if cols[i].button(f"📍 {nome_quartiere}", key=f"move_{n_id}", use_container_width=True):
                 engine.transaction(s, engine.move, config, n_id)
-                st.session_state.video_zona_visto = None # Reset del video della nuova zona!
+                st.session_state.video_zona_visto = None
                 st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
         st.divider()
 
-        # STAZIONE 4: VIDEO DEL QUARTIERE E POI INIZIA IL GIOCO!
+        # VIDEO DEL QUARTIERE E POI INIZIA IL GIOCO!
         agenti_presenti = engine.available_agents(s, config)
         
-        # Riproduci il video della zona prima di mostrare l'Agente AI!
         video_chiave = f"{padrone_casa_id}_video"
         if st.session_state.video_zona_visto != zona_id:
             percorso_video_zona = trova_video(video_chiave)
@@ -243,10 +244,8 @@ with tab_gioca:
                     st.session_state.video_zona_visto = zona_id
                     st.rerun()
             else:
-                # Se il video non c'è ancora, entra subito nel gioco
                 st.session_state.video_zona_visto = zona_id
 
-        # SE IL VIDEO È FINITO (O È STATO PREMUTO CONTINUA), APRI IL GIOCO VERO E PROPRIO!
         if st.session_state.video_zona_visto == zona_id:
             if agenti_presenti:
                 st.success(f"🔍 Sei arrivato a {nome_zona}!")
@@ -282,7 +281,7 @@ with tab_gioca:
 
 # --- STANZA 2: MAPPA E ZONE ---
 with tab_mappa:
-    st.subheader("🗺️ Mappa Geografica di Venezia")
+    st.subheader("🗺️️ Mappa Geografica di Venezia")
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     
     with st.expander("📸 Carica o cambia la Foto della Mappa"):
