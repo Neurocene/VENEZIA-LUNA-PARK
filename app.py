@@ -219,16 +219,15 @@ with tab_gioca:
             st.rerun()
 
     else:
-        st.write("## 🗺️ Mappa Interattiva di Venezia")
+        st.write("## 🗺️️ Mappa Interattiva di Venezia")
         st.caption("Fai clic su un quartiere per viaggiare. Non saprai chi c'è finché non arrivi!")
         
-        # MAPPA SULLO SFONDO CON BOTTONI SOVRAPPOSTI (INTERATTIVA!)
+        # MAPPA GRANDE E ALTA SULLO SFONDO! (Altezza portata a 480px)
         percorso_mappa = trova_foto("mappa_venezia")
         if percorso_mappa:
             with open(percorso_mappa, "rb") as file_m:
                 enc_map = base64.b64encode(file_m.read()).decode()
             
-            # Creiamo il contenitore con la mappa come SFONDO
             st.markdown(
                 f"""
                 <style>
@@ -236,22 +235,25 @@ with tab_gioca:
                     background-image: url("data:image/png;base64,{enc_map}");
                     background-size: cover;
                     background-position: center;
-                    padding: 30px;
+                    min-height: 480px;
+                    padding: 35px;
                     border-radius: 15px;
                     border: 3px solid #FFD700;
-                    margin-bottom: 20px;
+                    margin-bottom: 25px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
                 }}
                 </style>
                 """,
                 unsafe_allow_html=True
             )
 
-        # Inizio contenitore interattivo della mappa
         st.markdown('<div class="mappa-container">', unsafe_allow_html=True)
         
-        st.subheader("🧭 Dove vuoi viaggiare adesso? (Spostamento = 1 Ora)")
+        st.markdown("### 🧭 Dove vuoi viaggiare adesso? (Spostamento = 1 Ora)")
         
-        # Pulsanti cliccabili sovrapposti alla mappa
+        # Pulsanti azzurri trasparenti sovrapposti alla Mappa Grande!
         vicini = config['zones'][s['location']]['neighbors']
         cols = st.columns(len(vicini))
         for i, n_id in enumerate(vicini):
@@ -260,7 +262,7 @@ with tab_gioca:
                 engine.transaction(s, engine.move, config, n_id)
                 st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True) # Fine contenitore mappa
+        st.markdown('</div>', unsafe_allow_html=True)
 
         st.divider()
 
@@ -300,15 +302,13 @@ with tab_gioca:
         else:
             st.info(f"🌫️ In questa zona di {nome_zona} non c'è nessuno adesso. Scegli un altro quartiere sulla mappa!")
 
-# --- STANZA 2: MAPPA E ZONE (VEDI E CARICA LA MAPPA) ---
+# --- STANZA 2: MAPPA E ZONE ---
 with tab_mappa:
     st.subheader("🗺️ Mappa Geografica di Venezia")
     st.write(f"📍 **In questo momento ti trovi a:** **{nome_zona}**")
     
-    # Mostra la mappa
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     
-    # Riquadro per caricare una nuova Mappa direttamente da questa scheda!
     with st.expander("📸 Carica o cambia la Foto della Mappa di Venezia"):
         nuova_foto_mappa_tab = st.file_uploader("Scegli un'immagine di una Mappa dal PC:", type=["png", "jpg", "jpeg"], key="up_map_tab")
         if st.button("💾 Salva Nuova Mappa", key="btn_map_tab"):
