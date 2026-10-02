@@ -5,7 +5,7 @@ import streamlit as st
 import engine
 
 # ---------------------------------------------------------
-# 1. IL NOSTRO BANCO DI LAVORO LEGO (CONFIGURAZIONE PAGINA WEB)
+# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE PAGINA WEB)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione Lizzie Bar", layout="wide", page_icon="🎭")
 
@@ -52,7 +52,7 @@ def riproduci_video(nome):
             st.video(bytes_video)
             return True
         except Exception as e:
-            st.warning(f"⚠️️ Errore durante la riproduzione del video: {e}")
+            st.warning(f"⚠️ Errore durante la riproduzione del video: {e}")
             return False
     return False
 
@@ -159,7 +159,6 @@ if "game_state" not in st.session_state:
 s = st.session_state.game_state
 engine.timer(s, config)
 
-# INIZIALIZZIAMO L'INVENTARIO DEI PASS VIP
 if "pass_vip_raccolti" not in s:
     s["pass_vip_raccolti"] = []
 
