@@ -9,7 +9,7 @@ import engine
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
 
-# Assicuriamoci che la scatola 'assets' esista sul computer
+# Assicuriamoci che la cartella 'assets' esista per salvare le foto
 if not os.path.exists("assets"):
     os.makedirs("assets")
 
@@ -20,7 +20,7 @@ def carica_mondo():
 config = carica_mondo()
 
 # ---------------------------------------------------------
-# 2. IL DETECTIVE MAGICO (Cerca qualsiasi immagine in assets)
+# 2. IL DETECTIVE DELLE FOTO (.png o .jpg)
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -34,19 +34,16 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# Funzione per salvare le foto caricate sul computer
 def salva_foto_caricata(file_caricato, nome_destinazione):
     if file_caricato:
         est = file_caricato.name.split(".")[-1].lower()
         percorso_finale = os.path.join("assets", f"{nome_destinazione}.{est}")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Foto salvata con successo come '{nome_destinazione}.{est}'!")
+        st.success(f"🎉 Foto per '{nome_destinazione}' salvata!")
         st.rerun()
 
-# ---------------------------------------------------------
-# 3. SFONDO DI COPERTINA ALL'INGRESSO
-# ---------------------------------------------------------
+# SFONDO INGRESSO CON COPERTINA
 def imposta_sfondo_copertina():
     percorso_copertina = trova_foto("copertina")
     if percorso_copertina:
@@ -73,7 +70,7 @@ def imposta_sfondo_copertina():
         )
 
 # ---------------------------------------------------------
-# 4. LA PORTA SEGRETA CON PASSWORD
+# 3. PORTA D'INGRESSO SEGRETA CON PASSWORD
 # ---------------------------------------------------------
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
@@ -82,7 +79,7 @@ if not st.session_state.autenticato:
     imposta_sfondo_copertina()
 
     st.title("🎭 Venezia Luna Park — Accesso Riservato")
-    st.write("🔒 **Inserisci la password segreta per accedere:**")
+    st.write("🔒 **Inserisci la password segreta per iniziare a giocare:**")
     
     password_inserita = st.text_input("Password segreta:", type="password")
     
@@ -96,7 +93,7 @@ if not st.session_state.autenticato:
     st.stop()
 
 # ---------------------------------------------------------
-# 5. AVVIAMO IL MOTORE DEL GIOCO
+# 4. MOTORE DEL GIOCO
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -105,13 +102,12 @@ s = st.session_state.game_state
 engine.timer(s, config)
 
 # ---------------------------------------------------------
-# 6. LA BARRA IN ALTO CON LA FOTO DELLA LOCATION E UPLOAD
+# 5. BARRA SUPERIORE (LUOGO E SFONDO ATTUALE)
 # ---------------------------------------------------------
 zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
 padrone_casa_id = config['zones'][zona_id]['owner']
 
-# Chiave separata per la FOTO DEL LUOGO (es. brago_luogo, rosko_luogo)
 chiave_luogo = f"{padrone_casa_id}_luogo"
 if s['phase'] == 'intro':
     chiave_luogo = "brago_luogo"
@@ -121,19 +117,17 @@ col1, col2, col_luogo, col4, col5 = st.columns([1, 1, 2, 1, 1])
 col1.metric("⏳ Ora Narrativa", f"{s['hour']}/72")
 col2.metric("⏱ Minuti Reali", f"{int(s['active_seconds'] // 60)}/120")
 
-# FOTO DELLA LOCATION E TASTO PER CAMBIARLA
 with col_luogo:
-    st.markdown(f"### 🏰 Location: {nome_zona}")
+    st.markdown(f"### 🏰 Location Attuale: {nome_zona}")
+    mostra_foto(chiave_luogo, f"Scenario: {nome_zona}")
     
-    mostra_foto(chiave_luogo, f"Foto dello scenario: {nome_zona}")
-    
-    with st.expander(f"🖼️ Carica o cambia FOTO DELLA LOCATION ({nome_zona})"):
+    with st.expander(f"🖼️ Carica/Cambia foto dello scenario ({nome_zona})"):
         foto_luogo_nuova = st.file_uploader(
             f"Scegli una foto per lo scenario di {nome_zona}", 
             type=["png", "jpg", "jpeg"], 
             key=f"up_top_{chiave_luogo}"
         )
-        if st.button("💾 Salva Foto Location", key=f"btn_top_{chiave_luogo}"):
+        if st.button("💾 Salva Foto Scenario", key=f"btn_top_{chiave_luogo}"):
             salva_foto_caricata(foto_luogo_nuova, chiave_luogo)
 
 col4.metric("🎒 Inventario", ", ".join(s['inventory']) if s['inventory'] else "Vuoto")
@@ -159,7 +153,7 @@ with st.sidebar:
         st.session_state.autenticato = False
         st.rerun()
 
-# LE STANZE DI GIOCO
+# LE 6 STANZE DEL GIOCO
 tab_gioca, tab_mappa, tab_personaggi, tab_relazioni, tab_agenti, tab_diag = st.tabs([
     "🎮 Gioca", "🗺️ Mappa e zone", "👤 Personaggi", 
     "📊 Relazioni e percorso", "💬 Agenti tra loro", "🛠️ Scrittura e diagnostica"
@@ -174,12 +168,12 @@ with tab_gioca:
         else:
             st.error(f"❌ GAME OVER: {s['status'].replace('_', ' ').upper()}")
             
+    # FASE 1: IL COLLOQUIO INIZIALE CON IL PORCO (BRAGO)
     elif s['phase'] == 'intro':
         st.markdown("## 🎭 Benvenuto a Venezia Luna Park!")
         st.info("🌊 Ti svegli ai margini della laguna dopo una grande piena. Davanti a te c'è Brago.")
         st.divider()
 
-        # LA PROPOSTA DI BRAGO CON FOTO PERSONAGGIO E UPLOAD DEDICATO
         st.subheader("🐖 La Proposta di Brago")
         col_brago_foto, col_brago_testo = st.columns([1, 2])
         
@@ -201,7 +195,7 @@ with tab_gioca:
             col_accetta, col_rifiuta = st.columns(2)
             with col_accetta:
                 st.success("🤝 **OPZIONE 1: ACCETTA IL PATTO**")
-                if st.button("✅ Accetta il Patto e vai da Rosko", use_container_width=True):
+                if st.button("✅ Accetta e Sblocca la Mappa di Venezia", use_container_width=True):
                     engine.transaction(s, engine.interrogate, config, True)
                     st.rerun()
 
@@ -215,42 +209,57 @@ with tab_gioca:
         mostra_foto("brago", "Prigioniero nella Laguna")
         st.warning("⛓ Sei stato reso schiavo dal Porco!")
         col_f1, col_f2 = st.columns(2)
-        if col_f1.button("🏃 Fuga durante il recupero (vai da Klaus)", use_container_width=True):
+        if col_f1.button("🏃 Fuga durante il recupero", use_container_width=True):
             engine.transaction(s, engine.escape, config, 'recupero')
             st.rerun()
-        if col_f2.button("🎵 Fuga durante il concerto (vai da Rosko)", use_container_width=True):
+        if col_f2.button("🎵 Fuga durante il concerto", use_container_width=True):
             engine.transaction(s, engine.escape, config, 'concerto')
             st.rerun()
 
+    # FASE 2: ESPLORAZIONE DELLA MAPPA SEGRETA!
     else:
-        # SCENARI SPECIALI (es. Lizzie Bar)
-        if padrone_casa_id == "lizzie":
-            scelta_interno = st.radio("🏢 Dove vuoi andare?", ["Esterno Bar", "Interno Bar", "Suite Riservata"], horizontal=True)
-            chiave_luogo = "lizzie_esterno_luogo" if scelta_interno == "Esterno Bar" else "lizzie_interno_luogo" if scelta_interno == "Interno Bar" else "lizzie_suite_luogo"
+        st.write("## 🗺️ Mappa di Esplorazione")
+        st.caption("Scegli dove vuoi viaggiare sulla Mappa. Non sai quale Agente AI troverai finché non arrivi sul posto!")
+        
+        # Mostra la foto generale della Mappa di Venezia se caricata
+        mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
+        with st.expander("🖼️ Carica/Cambia l'immagine della Mappa di Venezia"):
+            foto_mappa_nuova = st.file_uploader("Foto della Mappa", type=["png", "jpg", "jpeg"], key="up_mappa_gen")
+            if st.button("💾 Salva Foto Mappa", key="btn_mappa_gen"):
+                salva_foto_caricata(foto_mappa_nuova, "mappa_venezia")
+
+        st.subheader("🧭 Dove vuoi andare adesso? (Spostamento = 1 Ora)")
+        
+        # Genera i pulsanti cliccabili per viaggiare nelle varie zone senza rivelare gli Agenti!
+        vicini = config['zones'][s['location']]['neighbors']
+        cols = st.columns(len(vicini))
+        for i, n_id in enumerate(vicini):
+            nome_quartiere = config['zones'][n_id]['name']
+            if cols[i].button(f"🗺️ Viaggia verso {nome_quartiere}", key=f"move_{n_id}", use_container_width=True):
+                engine.transaction(s, engine.move, config, n_id)
+                st.rerun()
 
         st.divider()
 
-        # PARLIAMO CON GLI AGENTI AI (OGNI PERSONAGGIO HA IL SUO RITRATTO + UPLOAD SEPARATO)
+        # QUI APPARE L'AGENTE AI SEGRETO SOLO QUANDO ARRIVI SUL POSTO!
         agenti_presenti = engine.available_agents(s, config)
-        st.write("### 💬 Personaggi con cui puoi parlare:")
         if agenti_presenti:
+            st.success(f"🔍 Hai esplorato {nome_zona} e trovato un personaggio misterioso!")
             for ag_id in agenti_presenti:
                 ag_dati = config['agents'][ag_id]
                 ag_nome = ag_dati['name']
                 col_ritratto, col_chat = st.columns([1, 3])
                 
-                # FOTO DEL PERSONAGGIO AGENTE AI
                 with col_ritratto:
-                    mostra_foto(ag_id, f"Personaggio: {ag_nome}")
-                    with st.expander(f"👤 Cambia Foto Personaggio {ag_nome}"):
-                        foto_ag_nuova = st.file_uploader(f"Foto per {ag_nome}", type=["png", "jpg", "jpeg"], key=f"up_ag_{ag_id}")
+                    mostra_foto(ag_id, f"Incontri: {ag_nome}")
+                    with st.expander(f"👤 Cambia Foto {ag_nome}"):
+                        foto_ag_nuova = st.file_uploader(f"Foto {ag_nome}", type=["png", "jpg", "jpeg"], key=f"up_ag_{ag_id}")
                         if st.button(f"💾 Salva Foto {ag_nome}", key=f"btn_ag_{ag_id}"):
                             salva_foto_caricata(foto_ag_nuova, ag_id)
                 
-                # DIALOGO CHAT
                 with col_chat:
-                    st.write(f"### {ag_nome} (Fiducia: {s['trust'][ag_id]})")
-                    frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"txt_{ag_id}")
+                    st.write(f"### 🗣️ Stai parlando con: {ag_nome} (Fiducia: {s['trust'][ag_id]})")
+                    frase = st.text_input(f"Cosa rispondi a {ag_nome}?:", key=f"txt_{ag_id}")
                     col_d1, col_d2, col_d3, col_d4 = st.columns(4)
                     if col_d1.button("💬 Gentilmente", key=f"fav_{ag_id}"):
                         st.success(f"{ag_nome}: " + engine.transaction(s, engine.dialogue, config, ag_id, 'respect', frase))
@@ -265,27 +274,23 @@ with tab_gioca:
                         st.info(f"{ag_nome}: " + engine.transaction(s, engine.dialogue, config, ag_id, 'repair', frase))
                         st.rerun()
                 st.write("---")
+        else:
+            st.info(f"🌫️ In questa zona di {nome_zona} non c'è nessun personaggio al momento. Scegli un altro quartiere sulla mappa!")
 
-        st.divider()
-        st.write("### 🚶 Spostati in un'altra zona:")
-        vicini = config['zones'][s['location']]['neighbors']
-        cols = st.columns(len(vicini))
-        for i, n_id in enumerate(vicini):
-            if cols[i].button(f"Vai a {config['zones'][n_id]['name']}", key=f"move_{n_id}"):
-                engine.transaction(s, engine.move, config, n_id)
-                st.rerun()
-
-# --- STANZA 2: MAPPA ---
+# --- STANZA 2: MAPPA E ZONE (PER ORIENTARSI) ---
 with tab_mappa:
-    st.subheader("🗺️ Mappa dei Territori")
+    st.subheader("🗺️ Mappa Geografica di Venezia")
+    st.write(f"📍 **In questo momento ti trovi a:** **{nome_zona}**")
+    mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
+    
+    st.divider()
+    st.subheader("📍 Elenco dei Quartieri Conosciuti:")
     for id_z, dati_z in config['zones'].items():
-        padre_id = dati_z['owner']
-        st.write(f"• **{dati_z['name']}** — Controllato da: {config['agents'][padre_id]['name']}")
-        mostra_foto(f"{padre_id}_luogo", dati_z['name'])
+        st.write(f"• **{dati_z['name']}** — (Zona di Venezia esplorabile)")
 
 # --- STANZA 3: PERSONAGGI ---
 with tab_personaggi:
-    st.subheader("👤 I Personaggi del Gioco")
+    st.subheader("👤 Diario dei Personaggi Incontrati")
     for id_p, dati_p in config['agents'].items():
         col_img, col_info = st.columns([1, 3])
         with col_img:
@@ -302,11 +307,12 @@ with tab_relazioni:
 with tab_agenti:
     st.subheader("💬 Gli Agenti parlano tra loro")
 
-# --- STANZA 6: UPLOAD GENERALE ---
+# --- STANZA 6: CARICATORE GENERALE ---
 with tab_diag:
     st.subheader("🛠️ Carica qualsiasi Foto nel Gioco")
     
     opzioni_target = {
+        "Mappa Generale di Venezia": "mappa_venezia",
         "Foto di Copertina Sfondo": "copertina",
         "Brago (Personaggio)": "brago",
         "Brago (Location Laguna)": "brago_luogo",
