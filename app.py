@@ -5,11 +5,10 @@ import streamlit as st
 import engine
 
 # ---------------------------------------------------------
-# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE PAGINA WEB)
+# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione Lizzie Bar", layout="wide", page_icon="🎭")
 
-# Controlliamo che le cartelle 'assets' e 'data' esistano sul computer
 if not os.path.exists("assets"):
     os.makedirs("assets")
 
@@ -22,7 +21,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# MAPPA MAGICA DEGLI ABBINAMENTI ZONA -> PERSONAGGIO
+# MAPPA DEGLI ABBINAMENTI ZONA -> PERSONAGGIO
 MAPPA_PERSONAGGI = {
     "margini": {"id": "brago", "nome": "Brago"},
     "cannaregio": {"id": "rosko", "nome": "Rosko"},
@@ -192,7 +191,7 @@ st.divider()
 with st.sidebar:
     st.header("🎯 Missione Principale")
     st.write("✉️ **Consegna il messaggio segreto a Lizzie al Lizzie Bar!**")
-    st.write(f"🎟️ **Pass VIP per entrare:** {len(s['pass_vip_raccolti'])}/3 per sbloccare il Bar!")
+    st.write(f"🎟️️ **Pass VIP per entrare:** {len(s['pass_vip_raccolti'])}/3 per sbloccare il Bar!")
     st.divider()
 
     st.header("🛠️ Laboratorio Agenti AI")
@@ -301,7 +300,7 @@ with tab_gioca:
             
             col_sinistra, col_destra = st.columns([1, 2])
 
-            # COLONNA DI SINISTRA: IMMAGINE, VIDEO E UPLOAD
+            # COLONNA DI SINISTRA: IMMAGINE, VIDEO E UPLOAD FOTO
             with col_sinistra:
                 st.subheader(f"🖼️ Foto & Media di {ag_nome}")
                 mostra_foto(ag_id_trovato, f"Ritratto: {ag_nome}")
@@ -319,10 +318,27 @@ with tab_gioca:
                     if st.button(f"💾 Salva Foto {ag_nome}", key=f"btn_p_{ag_id_trovato}"):
                         salva_foto_caricata(nuova_img_pers, ag_id_trovato)
 
-            # COLONNA DI DESTRA: CHAT INTERATTIVA CON L'AGENTE AI
+            # COLONNA DI DESTRA: CHAT + NUOVO UPLOAD FILE TESTO PER BIO & REGOLE!
             with col_destra:
                 st.subheader(f"💬 Chat con l'Agente AI ({ag_nome})")
+                
+                # MOSTRA LA BIO ATTUALE
                 st.info(f"📜 **Comportamento dell'Agente:**\n\n_{ag_dati.get('biography', 'Nessuna biografia.')}_")
+                
+                # 📄 NUOVA FESSURA MAGICA: UPLOAD FILE DI TESTO CON REGOLE E BIO
+                with st.expander(f"📄 Carica File con Bio e Regole per {ag_nome} (.txt)"):
+                    st.caption("Carica un file di testo (.txt) dal tuo computer con le regole che l'Agente AI deve seguire:")
+                    file_txt_caricato = st.file_uploader("Scegli un file .txt:", type=["txt"], key=f"txt_up_{ag_id_trovato}")
+                    if st.button(f"💾 SALVA NUOVA BIO E REGOLE", key=f"btn_save_txt_{ag_id_trovato}"):
+                        if file_txt_caricato is not None:
+                            contenuto_testo = file_txt_caricato.read().decode("utf-8")
+                            config['agents'][ag_id_trovato]["biography"] = contenuto_testo
+                            salva_configurazione_mondo()
+                            st.success(f"🎉 Nuova biografia e regole per '{ag_nome}' caricate con successo!")
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ Per favore seleziona prima un file .txt!")
+
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
 
                 frase_utente = st.text_input(f"Scrivi un messaggio a {ag_nome}:", key=f"chat_input_{ag_id_trovato}")
