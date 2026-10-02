@@ -5,7 +5,7 @@ import streamlit as st
 import engine
 
 # ---------------------------------------------------------
-# 1. IL NOSTRO BANCO DI LAVORO LEGO (CONFIGURAZIONE PAGINA)
+# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE PAGINA)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
 
@@ -19,7 +19,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# CANNOCCHIALE PER LE FOTO (.png o .jpg)
+# CANNOCCHIALE PER TROVARE LE FOTO (.png o .jpg)
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -32,12 +32,26 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# CANNOCCHIALE PER I VIDEO (.mp4)
+# CANNOCCHIALE MAGICO PER TROVARE E LEGGERE I VIDEO (.mp4)
 def trova_video(nome):
-    percorso = os.path.join("assets", f"{nome}.mp4")
-    if os.path.exists(percorso):
-        return percorso
+    for est in [".mp4", ".MP4"]:
+        percorso = os.path.join("assets", f"{nome}{est}")
+        if os.path.exists(percorso):
+            return percorso
     return None
+
+def riproduci_video(nome):
+    percorso = trova_video(nome)
+    if percorso:
+        try:
+            with open(percorso, "rb") as f_video:
+                bytes_video = f_video.read()
+            st.video(bytes_video)
+            return True
+        except Exception as e:
+            st.warning(f"⚠️ Errore nel caricamento del video: {e}")
+            return False
+    return False
 
 # SALVA FOTO DAL COMPUTER
 def salva_foto_caricata(file_caricato, nome_destinazione):
@@ -88,7 +102,7 @@ def imposta_sfondo_copertina():
         )
 
 # ---------------------------------------------------------
-# STAZIONE 1: PRIMA PAGINA CON PASSWORD
+# STAZIONE 1: PRIMA PAGINA CON PASSWORD (SOLO COPERTINA)
 # ---------------------------------------------------------
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
@@ -114,16 +128,15 @@ if not st.session_state.autenticato:
     st.stop()
 
 # ---------------------------------------------------------
-# STAZIONE 2: VIDEO INIZIALE DI INTRODUZIONE (intro.mp4)
+# STAZIONE 2: VIDEO INIZIALE DI INTRODUZIONE
 # ---------------------------------------------------------
 if not st.session_state.video_intro_visto:
     st.markdown("## 🎬 Introduzione a Venezia Luna Park")
     
-    percorso_video_intro = trova_video("intro")
-    if percorso_video_intro:
-        st.video(percorso_video_intro)
-    else:
-        st.info("ℹ️ Il video `assets/intro.mp4` non è ancora caricato. Clicca sotto per proseguire!")
+    # QUI C'È IL NUOVO NOME DEL VIDEO! 🍿
+    video_riprodotto = riproduci_video("VENEZIA LUNA PARK - thebeginning1")
+    if not video_riprodotto:
+        st.info("ℹ️ Il video `assets/VENEZIA LUNA PARK - thebeginning1.mp4` non è stato ancora trovato nella cartella assets. Puoi comunque cliccare il pulsante sotto per andare avanti!")
 
     if st.button("▶ CONTINUA AL GIOCO", use_container_width=True):
         st.session_state.video_intro_visto = True
@@ -131,7 +144,7 @@ if not st.session_state.video_intro_visto:
     st.stop()
 
 # ---------------------------------------------------------
-# STAZIONE 3 & 4: IL MOTORE DEL GIOCO
+# STAZIONE 3 & 4: MOTORE DEL GIOCO E MAPPA
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -184,7 +197,7 @@ with tab_gioca:
         else:
             st.error(f"❌ GAME OVER: {s['status'].replace('_', ' ').upper()}")
             
-    # FASE INIZIALE: IL PATTO CON BRAGO (SENZA ERRORE!)
+    # PATTO INIZIALE CON BRAGO
     elif s['phase'] == 'intro':
         st.markdown("## 🎭 Benvenuto a Venezia Luna Park!")
         st.info("🌊 Ti svegli ai margini della laguna dopo una grande piena. Davanti a te c'è Brago.")
@@ -232,7 +245,7 @@ with tab_gioca:
             engine.transaction(s, engine.escape, config, 'concerto')
             st.rerun()
 
-    # FASE ESPLORAZIONE: ORA LA MAPPA FUNZIONA PERFETTAMENTE!
+    # MAPPA INTERATTIVA ED ESPLORAZIONE
     else:
         st.write("## 🗺️ Mappa Interattiva di Venezia")
         st.caption("Fai clic su un quartiere per viaggiare!")
@@ -280,10 +293,9 @@ with tab_gioca:
         
         video_chiave = f"{padrone_casa_id}_video"
         if st.session_state.video_zona_visto != zona_id:
-            percorso_video_zona = trova_video(video_chiave)
-            if percorso_video_zona:
-                st.markdown(f"### 🎬 Benvenuto a {nome_zona}")
-                st.video(percorso_video_zona)
+            st.markdown(f"### 🎬 Benvenuto a {nome_zona}")
+            ha_riprodotto = riproduci_video(video_chiave)
+            if ha_riprodotto:
                 if st.button("🎮 INIZIA A PARLARE CON IL PERSONAGGIO", use_container_width=True):
                     st.session_state.video_zona_visto = zona_id
                     st.rerun()
