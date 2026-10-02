@@ -65,6 +65,14 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         st.success(f"🎉 Foto salvata con successo come '{nome_destinazione}.{est}'!")
         st.rerun()
 
+# FUNZIONE MAGICA PER AGGIORNARE LA BIO DEL PERSONAGGIO
+def salva_bio_personaggio(id_agente, nuova_bio):
+    config['agents'][id_agente]["biography"] = nuova_bio
+    with open("data/world.json", "w", encoding="utf-8") as f_out:
+        json.dump(config, f_out, indent=2, ensure_ascii=False)
+    st.success(f"🎉 Biografia e comportamento di {config['agents'][id_agente]['name']} aggiornati!")
+    st.rerun()
+
 # SFONDO PERFETTO ALL'INGRESSO
 def imposta_sfondo_copertina():
     percorso_copertina = trova_foto("copertina")
@@ -137,7 +145,7 @@ if not st.session_state.video_intro_visto:
     
     video_riprodotto = riproduci_video("VENEZIA LUNA PARK - thebeginning1")
     if not video_riprodotto:
-        st.info("ℹ️ Il video `assets/VENEZIA LUNA PARK - thebeginning1.mp4` non è stato trovato. Puoi comunque proseguire cliccando il tasto sotto!")
+        st.info("ℹ️️ Il video `assets/VENEZIA LUNA PARK - thebeginning1.mp4` non è stato trovato. Puoi comunque proseguire cliccando il tasto sotto!")
 
     if st.button("▶ APRI LA MAPPA DI VENEZIA", use_container_width=True):
         st.session_state.video_intro_visto = True
@@ -186,8 +194,8 @@ with st.sidebar:
         st.rerun()
 
 # SCHEDE DELL'INTERFACCIA
-tab_gioca, tab_mappa, tab_personaggi, tab_agenti_builder = st.tabs([
-    "🎮 Gioca & Esplora", "🗺️ Mappa di Venezia", "👤 Diario Personaggi", "🛠️ Laboratorio Agenti AI"
+tab_gioca, tab_mappa, tab_personaggi = st.tabs([
+    "🎮 Gioca & Esplora", "🗺️ Mappa di Venezia", "👤 Diario Personaggi"
 ])
 
 # --- TAB 1: GIOCA & ESPLORA ---
@@ -200,7 +208,7 @@ with tab_gioca:
             st.error(f"❌ GAME OVER: {s['status'].replace('_', ' ').upper()}")
             
     else:
-        st.write("## 🗺️ Mappa Interattiva di Venezia")
+        st.write("## 🗺️️ Mappa Interattiva di Venezia")
         st.caption("Fai clic su un quartiere per viaggiare, vedere il video e incontrare il personaggio!")
         
         # MAPPA INTERATTIVA SULLO SFONDO
@@ -265,16 +273,27 @@ with tab_gioca:
                     ag_nome = ag_dati['name']
                     col_ritratto, col_chat = st.columns([1, 3])
                     
+                    # COLONNA DI SINISTRA: FOTO + TASTO UPDATE BIO SOTTO OGNI PERSONAGGIO!
                     with col_ritratto:
                         mostra_foto(ag_id, f"Incontri: {ag_nome}")
+                        
+                        # 📸 CAMBIA FOTO
                         with st.expander(f"👤 Cambia Foto {ag_nome}"):
                             foto_ag_nuova = st.file_uploader(f"Foto {ag_nome}", type=["png", "jpg", "jpeg"], key=f"up_ag_{ag_id}")
                             if st.button(f"💾 Salva Foto {ag_nome}", key=f"btn_ag_{ag_id}"):
                                 salva_foto_caricata(foto_ag_nuova, ag_id)
+                        
+                        # 📝 UPDATE BIO DIRETTAMENTE SOTTO IL PERSONAGGIO!
+                        with st.expander(f"📝 UPDATE BIO ({ag_nome})"):
+                            st.caption("Scrivi qui la storia e il comportamento dell'Agente AI:")
+                            testo_bio = st.text_area("Biografia e Ruolo:", value=ag_dati.get("biography", ""), key=f"bio_txt_{ag_id}", height=150)
+                            if st.button(f"💾 Salva e Aggiorna Bio", key=f"btn_bio_{ag_id}"):
+                                salva_bio_personaggio(ag_id, testo_bio)
                     
+                    # COLONNA DI DESTRA: CHAT CON L'AGENTE AI
                     with col_chat:
                         st.write(f"### 🗣️ Stai parlando con: {ag_nome}")
-                        st.caption(f"**Ruolo/Attitudine:** {ag_dati.get('attitudine', 'Pilota di Gondole Turbo')}")
+                        st.info(f"📜 **Comportamento & Ruolo Agente:**\n\n_{ag_dati.get('biography', 'Nessuna biografia impostata.')}_")
                         st.write(f"**Livello di Fiducia:** {s['trust'][ag_id]}/100")
                         
                         frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"txt_{ag_id}")
@@ -308,7 +327,7 @@ with tab_gioca:
 
 # --- TAB 2: MAPPA & CARICAMENTO FOTO ---
 with tab_mappa:
-    st.subheader("🗺️️ Mappa Geografica di Venezia")
+    st.subheader("🗺️ Mappa Geografica di Venezia")
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     
     with st.expander("📸 Carica o cambia l'Immagine della Mappa"):
@@ -325,35 +344,5 @@ with tab_personaggi:
             mostra_foto(id_p, dati_p['name'])
         with col_info:
             st.write(f"### {dati_p['name']}")
-            st.write(f"**Biografia:** {dati_p.get('biography', 'Nessuna biografia.')}")
-            st.write(f"**Attitudine:** {dati_p.get('attitudine', 'Non specificata.')}")
-            st.write(f"**Punti Deboli:** {dati_p.get('punti_deboli', 'Nessuno.')}")
-            st.write(f"**Antagonismo:** {dati_p.get('antagonismo', 'Nessuno.')}")
+            st.write(f"**Biografia & Istruzioni Agente:** {dati_p.get('biography', 'Nessuna biografia.')}")
         st.write("---")
-
-# --- TAB 4: LABORATORIO AGENTI AI (MODIFICA CARATTERISTICHE DIRETTAMENTE DALL'APP!) ---
-with tab_agenti_builder:
-    st.subheader("🛠️ Modifica le Caratteristiche degli Agenti AI")
-    st.caption("Da qui puoi cambiare biografia, attitudine, punti deboli e argomenti di antagonismo per ogni personaggio!")
-    
-    scelta_agente = st.selectbox("Seleziona l'Agente AI da programmare:", list(config['agents'].keys()))
-    ag_selezionato = config['agents'][scelta_agente]
-
-    with st.form("form_modifica_agente"):
-        nuova_bio = st.text_area("📖 Biografia:", value=ag_selezionato.get("biography", ""))
-        nuova_attitudine = st.text_input("🎭 Attitudine e Ruolo Narrativo:", value=ag_selezionato.get("attitudine", "Pilota appassionato di gondole motorizzate"))
-        nuovi_punti_deboli = st.text_input("💔 Punti Deboli (Cosa lo convince):", value=ag_selezionato.get("punti_deboli", "Lusinghe sui motori turbo"))
-        nuovo_antagonismo = st.text_input("⚔️ Argomenti di Antagonismo (Cosa lo fa arrabbiare):", value=ag_selezionato.get("antagonismo", "Insulti alla sua gondola"))
-
-        submitted = st.form_submit_button("💾 SALVA CARATTERISTICHE AGENTE AI")
-        if submitted:
-            config['agents'][scelta_agente]["biography"] = nuova_bio
-            config['agents'][scelta_agente]["attitudine"] = nuova_attitudine
-            config['agents'][scelta_agente]["punti_deboli"] = nuovi_punti_deboli
-            config['agents'][scelta_agente]["antagonismo"] = nuovo_antagonismo
-            
-            # Salva le modifiche direttamente nel file JSON del mondo!
-            with open("data/world.json", "w", encoding="utf-8") as f_out:
-                json.dump(config, f_out, indent=2, ensure_ascii=False)
-            st.success(f"🎉 Caratteristiche per '{ag_selezionato['name']}' aggiornate con successo!")
-            st.rerun()
