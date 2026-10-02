@@ -5,13 +5,15 @@ import streamlit as st
 import engine
 
 # ---------------------------------------------------------
-# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE PAGINA)
+# 1. PREPARIAMO IL BANCO DA LAVORO (CONFIGURAZIONE APP)
 # ---------------------------------------------------------
-st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
+st.set_page_config(page_title="Venezia Luna Park — La Corsa delle Gondole", layout="wide", page_icon="🎭")
 
-# Controlliamo che la scatola 'assets' esista sul computer
 if not os.path.exists("assets"):
     os.makedirs("assets")
+
+if not os.path.exists("data"):
+    os.makedirs("data")
 
 @st.cache_data
 def carica_mondo():
@@ -32,7 +34,7 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# CANNOCCHIALE MAGICO PER TROVARE E LEGGERE I VIDEO (.mp4)
+# CANNOCCHIALE PER TROVARE E LEGGERE I VIDEO (.mp4)
 def trova_video(nome):
     for est in [".mp4", ".MP4"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -49,7 +51,7 @@ def riproduci_video(nome):
             st.video(bytes_video)
             return True
         except Exception as e:
-            st.warning(f"⚠️ Errore nel caricamento del video: {e}")
+            st.warning(f"⚠️ Errore durante la riproduzione del video: {e}")
             return False
     return False
 
@@ -60,7 +62,7 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         percorso_finale = os.path.join("assets", f"{nome_destinazione}.{est}")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Foto salvata come '{nome_destinazione}.{est}'!")
+        st.success(f"🎉 Foto salvata con successo come '{nome_destinazione}.{est}'!")
         st.rerun()
 
 # SFONDO PERFETTO ALL'INGRESSO
@@ -133,18 +135,17 @@ if not st.session_state.autenticato:
 if not st.session_state.video_intro_visto:
     st.markdown("## 🎬 Introduzione a Venezia Luna Park")
     
-    # QUI C'È IL NUOVO NOME DEL VIDEO! 🍿
     video_riprodotto = riproduci_video("VENEZIA LUNA PARK - thebeginning1")
     if not video_riprodotto:
-        st.info("ℹ️ Il video `assets/VENEZIA LUNA PARK - thebeginning1.mp4` non è stato ancora trovato nella cartella assets. Puoi comunque cliccare il pulsante sotto per andare avanti!")
+        st.info("ℹ️ Il video `assets/VENEZIA LUNA PARK - thebeginning1.mp4` non è stato trovato. Puoi comunque proseguire cliccando il tasto sotto!")
 
-    if st.button("▶ CONTINUA AL GIOCO", use_container_width=True):
+    if st.button("▶ APRI LA MAPPA DI VENEZIA", use_container_width=True):
         st.session_state.video_intro_visto = True
         st.rerun()
     st.stop()
 
 # ---------------------------------------------------------
-# STAZIONE 3 & 4: MOTORE DEL GIOCO E MAPPA
+# STAZIONE 3: AVVIO MOTORE DEL GIOCO
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -156,14 +157,15 @@ zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
 padrone_casa_id = config['zones'][zona_id]['owner']
 
+# CRUSCOTTO DEL GIOCATORE IN ALTO
 col1, col2, col_luogo, col4, col5 = st.columns([1, 1, 2, 1, 1])
 col1.metric("⏳ Ora Narrativa", f"{s['hour']}/72")
 col2.metric("⏱ Minuti Reali", f"{int(s['active_seconds'] // 60)}/120")
 
 with col_luogo:
-    st.markdown(f"### 🏰 Location: {nome_zona}")
+    st.markdown(f"### 🏰 Posizione Attuale: {nome_zona}")
 
-col4.metric("🎒 Inventario", ", ".join(s['inventory']) if s['inventory'] else "Vuoto")
+col4.metric("🎒 Inventario", ", ".join(s['inventory']) if s['inventory'] else "Messaggio per Lizzie")
 
 if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     s['paused'] = not s['paused']
@@ -171,11 +173,11 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
 
 st.divider()
 
-# BARRA LATERALE PER USCIRE
+# BARRA LATERALE
 with st.sidebar:
-    st.header("🐷 Stato del Porco")
-    st.write(f"**Relazione:** {s['pig']}")
-    st.write(f"**Posizione:** {config['zones'][s['pig_location']]['name']}")
+    st.header("🎯 Missione Principale")
+    st.write("📩 **Consegna il messaggio a Lizzie al Lizzie Bar!**")
+    st.write(f"**Pass per il Bar:** {'✅ Ottenuto!' if 'pass_lizzie' in s['inventory'] else '❌ Mancante'}")
     st.divider()
     if st.button("🔒 Esci e torna alla Copertina"):
         st.session_state.autenticato = False
@@ -183,73 +185,25 @@ with st.sidebar:
         st.session_state.video_zona_visto = None
         st.rerun()
 
-# STANZE DEL GIOCO
-tab_gioca, tab_mappa, tab_personaggi, tab_diag = st.tabs([
-    "🎮 Gioca", "🗺️ Mappa e zone", "👤 Personaggi", "🛠️ Scrittura e diagnostica"
+# SCHEDE DELL'INTERFACCIA
+tab_gioca, tab_mappa, tab_personaggi, tab_agenti_builder = st.tabs([
+    "🎮 Gioca & Esplora", "🗺️ Mappa di Venezia", "👤 Diario Personaggi", "🛠️ Laboratorio Agenti AI"
 ])
 
-# --- STANZA 1: GIOCA ---
+# --- TAB 1: GIOCA & ESPLORA ---
 with tab_gioca:
     if s['status'] != 'in_corso':
         if s['status'] == 'vittoria':
             st.balloons()
-            st.success("🎉 VITTORIA!")
+            st.success("🎉 VITTORIA! Sei riuscito ad accedere al Lizzie Bar e a consegnare il messaggio a Lizzie!")
         else:
             st.error(f"❌ GAME OVER: {s['status'].replace('_', ' ').upper()}")
             
-    # PATTO INIZIALE CON BRAGO
-    elif s['phase'] == 'intro':
-        st.markdown("## 🎭 Benvenuto a Venezia Luna Park!")
-        st.info("🌊 Ti svegli ai margini della laguna dopo una grande piena. Davanti a te c'è Brago.")
-        st.divider()
-
-        st.subheader("🐖 La Proposta di Brago")
-        col_brago_foto, col_brago_testo = st.columns([1, 2])
-        
-        with col_brago_foto:
-            mostra_foto("brago", "Personaggio: Brago")
-            with st.expander("👤 Cambia Foto Brago"):
-                nuova_foto_brago = st.file_uploader("Scegli foto per Brago", type=["png", "jpg", "jpeg"], key="up_brago")
-                if st.button("💾 Salva Foto Brago", key="btn_brago"):
-                    salva_foto_caricata(nuova_foto_brago, "brago")
-
-        with col_brago_testo:
-            st.write(
-                "🗣️ *«Recupera l'amplificatore a San Marco entro 48 ore. "
-                "Se me lo riporti saremo amici e ti aiuterò. Se rifiuti... diventerai mio schiavo!»*"
-            )
-            st.write("")
-            st.write("### ❓ Cosa vuoi fare?")
-
-            col_accetta, col_rifiuta = st.columns(2)
-            with col_accetta:
-                st.success("🤝 **OPZIONE 1: ACCETTA IL PATTO**")
-                if st.button("✅ Accetta e Sblocca la Mappa", use_container_width=True):
-                    engine.transaction(s, engine.interrogate, config, True)
-                    st.rerun()
-
-            with col_rifiuta:
-                st.error("💥 **OPZIONE 2: RIFIUTA IL PATTO**")
-                if st.button("❌ Rifiuta e tenta la Fuga", use_container_width=True):
-                    engine.transaction(s, engine.escape, config, False)
-                    st.rerun()
-
-    elif s['phase'] == 'schiavitu':
-        mostra_foto("brago", "Prigioniero nella Laguna")
-        st.warning("⛓ Sei stato reso schiavo dal Porco!")
-        col_f1, col_f2 = st.columns(2)
-        if col_f1.button("🏃 Fuga durante il recupero", use_container_width=True):
-            engine.transaction(s, engine.escape, config, 'recupero')
-            st.rerun()
-        if col_f2.button("🎵 Fuga durante il concerto", use_container_width=True):
-            engine.transaction(s, engine.escape, config, 'concerto')
-            st.rerun()
-
-    # MAPPA INTERATTIVA ED ESPLORAZIONE
     else:
         st.write("## 🗺️ Mappa Interattiva di Venezia")
-        st.caption("Fai clic su un quartiere per viaggiare!")
+        st.caption("Fai clic su un quartiere per viaggiare, vedere il video e incontrare il personaggio!")
         
+        # MAPPA INTERATTIVA SULLO SFONDO
         percorso_mappa = trova_foto("mappa_venezia")
         if percorso_mappa:
             with open(percorso_mappa, "rb") as file_m:
@@ -262,7 +216,7 @@ with tab_gioca:
                     background-image: url("data:image/png;base64,{enc_map}");
                     background-size: cover;
                     background-position: center;
-                    min-height: 500px;
+                    min-height: 480px;
                     padding: 30px;
                     border-radius: 15px;
                     border: 3px solid #FFD700;
@@ -274,37 +228,38 @@ with tab_gioca:
             )
 
         st.markdown('<div class="mappa-container">', unsafe_allow_html=True)
-        st.markdown("### 🧭 Scegli la tua prossima destinazione sulla Mappa:")
+        st.markdown("### 🧭 Dove vuoi viaggiare adesso?:")
         
-        vicini = config['zones'][s['location']]['neighbors']
-        cols = st.columns(len(vicini))
-        for i, n_id in enumerate(vicini):
-            nome_quartiere = config['zones'][n_id]['name']
-            if cols[i].button(f"📍 {nome_quartiere}", key=f"move_{n_id}", use_container_width=True):
-                engine.transaction(s, engine.move, config, n_id)
+        # BOTTONI DELLE ZONE SOVRAPPOSTI ALLA MAPPA
+        tutte_le_zone = list(config['zones'].keys())
+        cols = st.columns(len(tutte_le_zone))
+        for i, z_key in enumerate(tutte_le_zone):
+            nome_quartiere = config['zones'][z_key]['name']
+            if cols[i].button(f"📍 {nome_quartiere}", key=f"move_{z_key}", use_container_width=True):
+                s['location'] = z_key
                 st.session_state.video_zona_visto = None
                 st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
         st.divider()
 
-        # VIDEO DEL QUARTIERE E CHAT CON IL PERSONAGGIO
-        agenti_presenti = engine.available_agents(s, config)
-        
+        # VIDEO DEL QUARTIERE E INCONTRO CON L'AGENTE AI
         video_chiave = f"{padrone_casa_id}_video"
         if st.session_state.video_zona_visto != zona_id:
-            st.markdown(f"### 🎬 Benvenuto a {nome_zona}")
+            st.markdown(f"### 🎬 Arrivo a {nome_zona}")
             ha_riprodotto = riproduci_video(video_chiave)
             if ha_riprodotto:
-                if st.button("🎮 INIZIA A PARLARE CON IL PERSONAGGIO", use_container_width=True):
+                if st.button("🎮 INCONTRA IL PERSONAGGIO DI QUESTA ZONA", use_container_width=True):
                     st.session_state.video_zona_visto = zona_id
                     st.rerun()
             else:
                 st.session_state.video_zona_visto = zona_id
 
+        # DIALOGO CON L'AGENTE AI
         if st.session_state.video_zona_visto == zona_id:
+            agenti_presenti = engine.available_agents(s, config)
             if agenti_presenti:
-                st.success(f"🔍 Sei arrivato a {nome_zona}!")
+                st.success(f"🔍 Ti trovi a {nome_zona}!")
                 for ag_id in agenti_presenti:
                     ag_dati = config['agents'][ag_id]
                     ag_nome = ag_dati['name']
@@ -318,64 +273,87 @@ with tab_gioca:
                                 salva_foto_caricata(foto_ag_nuova, ag_id)
                     
                     with col_chat:
-                        st.write(f"### 🗣️ Parli con: {ag_nome} (Fiducia: {s['trust'][ag_id]})")
-                        frase = st.text_input(f"Cosa rispondi a {ag_nome}?:", key=f"txt_{ag_id}")
-                        col_d1, col_d2, col_d3, col_d4 = st.columns(4)
-                        if col_d1.button("💬 Gentilmente", key=f"fav_{ag_id}"):
-                            st.success(f"{ag_nome}: " + engine.transaction(s, engine.dialogue, config, ag_id, 'respect', frase))
+                        st.write(f"### 🗣️ Stai parlando con: {ag_nome}")
+                        st.caption(f"**Ruolo/Attitudine:** {ag_dati.get('attitudine', 'Pilota di Gondole Turbo')}")
+                        st.write(f"**Livello di Fiducia:** {s['trust'][ag_id]}/100")
+                        
+                        frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"txt_{ag_id}")
+                        col_d1, col_d2, col_d3 = st.columns(3)
+                        
+                        if col_d1.button("💬 Parla con Rispetto", key=f"fav_{ag_id}"):
+                            risposta = engine.transaction(s, engine.dialogue, config, ag_id, 'respect', frase)
+                            st.success(f"{ag_nome}: {risposta}")
                             st.rerun()
-                        if col_d2.button("😠 Con Cattiveria", key=f"ost_{ag_id}"):
-                            st.warning(f"{ag_nome}: " + engine.transaction(s, engine.dialogue, config, ag_id, 'insult', frase))
+                            
+                        if col_d2.button("🏎️ Chiedi Test Drive Gondola Turbo", key=f"test_{ag_id}"):
+                            if s['trust'][ag_id] >= 50:
+                                st.balloons()
+                                st.success(f"🎉 {ag_nome}: «Mi fido di te! Facciamo il test drive!» Hai superato la prova e ottenuto il Pass per il Lizzie Bar!")
+                                if "pass_lizzie" not in s['inventory']:
+                                    s['inventory'].append("pass_lizzie")
+                            else:
+                                st.error(f"❌ {ag_nome}: «Non mi fido ancora abbastanza di te per farti guidare la mia gondola motorizzata!»")
                             st.rerun()
-                        if col_d3.button("📜 Chiedi Incarico", key=f"req_{ag_id}"):
-                            st.info(f"{ag_nome}: " + engine.transaction(s, engine.dialogue, config, ag_id, 'request', frase))
-                            st.rerun()
-                        if col_d4.button("🤝 Chiedi Scusa", key=f"rep_{ag_id}"):
-                            st.info(f"{ag_nome}: " + engine.transaction(s, engine.dialogue, config, ag_id, 'repair', frase))
-                            st.rerun()
+
+                        if col_d3.button("💌 Consegna Messaggio a Lizzie", key=f"lizzie_{ag_id}"):
+                            if ag_id == "lizzie":
+                                if "pass_lizzie" in s['inventory']:
+                                    s['status'] = 'vittoria'
+                                    st.rerun()
+                                else:
+                                    st.warning("⚠️ I bottafuori del Lizzie Bar ti bloccano l'ingresso! Devi prima ottenere la fiducia di un pilota per il test drive della gondola motorizzata!")
+                            else:
+                                st.info(f"{ag_nome}: «Io non sono Lizzie! Cerca Lizzie al suo Bar a Santa Croce!»")
                     st.write("---")
 
-# --- STANZA 2: MAPPA E ZONE ---
+# --- TAB 2: MAPPA & CARICAMENTO FOTO ---
 with tab_mappa:
-    st.subheader("🗺️ Mappa Geografica di Venezia")
+    st.subheader("🗺️️ Mappa Geografica di Venezia")
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     
-    with st.expander("📸 Carica o cambia la Foto della Mappa"):
-        nuova_foto_mappa_tab = st.file_uploader("Scegli immagine Mappa:", type=["png", "jpg", "jpeg"], key="up_map_tab")
+    with st.expander("📸 Carica o cambia l'Immagine della Mappa"):
+        nuova_foto_mappa_tab = st.file_uploader("Scegli immagine per la Mappa:", type=["png", "jpg", "jpeg"], key="up_map_tab")
         if st.button("💾 Salva Nuova Mappa", key="btn_map_tab"):
             salva_foto_caricata(nuova_foto_mappa_tab, "mappa_venezia")
 
-# --- STANZA 3: PERSONAGGI ---
+# --- TAB 3: DIARIO PERSONAGGI ---
 with tab_personaggi:
-    st.subheader("👤 Diario dei Personaggi Incontrati")
+    st.subheader("👤 Diario dei Personaggi di Venezia")
     for id_p, dati_p in config['agents'].items():
         col_img, col_info = st.columns([1, 3])
         with col_img:
             mostra_foto(id_p, dati_p['name'])
         with col_info:
             st.write(f"### {dati_p['name']}")
-            st.write(f"**Storia:** {dati_p['biography']}")
+            st.write(f"**Biografia:** {dati_p.get('biography', 'Nessuna biografia.')}")
+            st.write(f"**Attitudine:** {dati_p.get('attitudine', 'Non specificata.')}")
+            st.write(f"**Punti Deboli:** {dati_p.get('punti_deboli', 'Nessuno.')}")
+            st.write(f"**Antagonismo:** {dati_p.get('antagonismo', 'Nessuno.')}")
         st.write("---")
 
-# --- STANZA 4: UPLOAD ---
-with tab_diag:
-    st.subheader("🛠️ Carica Foto e File")
-    opzioni_target = {
-        "Mappa Generale di Venezia": "mappa_venezia",
-        "Foto di Copertina Sfondo": "copertina",
-        "Brago (Personaggio)": "brago",
-        "Rosko (Personaggio)": "rosko",
-        "Lizzie (Personaggio)": "lizzie",
-        "Alberic (Personaggio)": "alberic",
-        "Marla (Personaggio)": "marla",
-        "Eloise (Personaggio)": "eloise",
-        "Klaus (Personaggio)": "klaus"
-    }
-
-    scelta_etichetta = st.selectbox("Cosa stai caricando?", list(opzioni_target.keys()))
-    chiave_destinazione = opzioni_target[scelta_etichetta]
-
-    nuova_foto_diag = st.file_uploader("Scegli la foto dal tuo computer:", type=["png", "jpg", "jpeg"], key="up_diag")
+# --- TAB 4: LABORATORIO AGENTI AI (MODIFICA CARATTERISTICHE DIRETTAMENTE DALL'APP!) ---
+with tab_agenti_builder:
+    st.subheader("🛠️ Modifica le Caratteristiche degli Agenti AI")
+    st.caption("Da qui puoi cambiare biografia, attitudine, punti deboli e argomenti di antagonismo per ogni personaggio!")
     
-    if st.button("💾 SALVA ED APPLICA LA FOTO", key="btn_diag"):
-        salva_foto_caricata(nuova_foto_diag, chiave_destinazione)
+    scelta_agente = st.selectbox("Seleziona l'Agente AI da programmare:", list(config['agents'].keys()))
+    ag_selezionato = config['agents'][scelta_agente]
+
+    with st.form("form_modifica_agente"):
+        nuova_bio = st.text_area("📖 Biografia:", value=ag_selezionato.get("biography", ""))
+        nuova_attitudine = st.text_input("🎭 Attitudine e Ruolo Narrativo:", value=ag_selezionato.get("attitudine", "Pilota appassionato di gondole motorizzate"))
+        nuovi_punti_deboli = st.text_input("💔 Punti Deboli (Cosa lo convince):", value=ag_selezionato.get("punti_deboli", "Lusinghe sui motori turbo"))
+        nuovo_antagonismo = st.text_input("⚔️ Argomenti di Antagonismo (Cosa lo fa arrabbiare):", value=ag_selezionato.get("antagonismo", "Insulti alla sua gondola"))
+
+        submitted = st.form_submit_button("💾 SALVA CARATTERISTICHE AGENTE AI")
+        if submitted:
+            config['agents'][scelta_agente]["biography"] = nuova_bio
+            config['agents'][scelta_agente]["attitudine"] = nuova_attitudine
+            config['agents'][scelta_agente]["punti_deboli"] = nuovi_punti_deboli
+            config['agents'][scelta_agente]["antagonismo"] = nuovo_antagonismo
+            
+            # Salva le modifiche direttamente nel file JSON del mondo!
+            with open("data/world.json", "w", encoding="utf-8") as f_out:
+                json.dump(config, f_out, indent=2, ensure_ascii=False)
+            st.success(f"🎉 Caratteristiche per '{ag_selezionato['name']}' aggiornate con successo!")
+            st.rerun()
