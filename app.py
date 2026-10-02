@@ -5,10 +5,11 @@ import streamlit as st
 import engine
 
 # ---------------------------------------------------------
-# 1. PREPARIAMO IL BANCO DA LAVORO (CONFIGURAZIONE APP)
+# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE PAGINA WEB)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — La Corsa delle Gondole", layout="wide", page_icon="🎭")
 
+# Controlliamo che la scatola 'assets' esista sul computer
 if not os.path.exists("assets"):
     os.makedirs("assets")
 
@@ -187,7 +188,6 @@ with st.sidebar:
     st.write(f"**Pass per il Bar:** {'✅ Ottenuto!' if 'pass_lizzie' in s['inventory'] else '❌ Mancante'}")
     st.divider()
 
-    # 🛠️ RASTRELLIERA LATERALE PER CREARE E MODIFICARE GLI AGENTI AI
     st.header("🛠️ Laboratorio Agenti AI")
     st.caption("Crea o modifica i personaggi direttamente da qui!")
 
@@ -208,7 +208,6 @@ with st.sidebar:
                     "biography": nuova_bio,
                     "location": zona_assegnata
                 }
-                # Inizializza fiducia nel game_state
                 if nuovo_id not in s['trust']:
                     s['trust'][nuovo_id] = 50
                 salva_configurazione_mondo()
@@ -253,7 +252,7 @@ with tab_gioca:
             
     else:
         st.write("## 🗺️ Mappa Interattiva di Venezia")
-        st.caption("Fai clic su un quartiere per viaggiare, vedere il video e incontrare il personaggio!")
+        st.caption("Fai clic su una zona per spostarti e iniziare a dialogare con l'Agente AI!")
         
         # MAPPA INTERATTIVA SULLO SFONDO
         percorso_mappa = trova_foto("mappa_venezia")
@@ -280,9 +279,9 @@ with tab_gioca:
             )
 
         st.markdown('<div class="mappa-container">', unsafe_allow_html=True)
-        st.markdown("### 🧭 Dove vuoi viaggiare adesso?:")
+        st.markdown("### 🧭 Scegli la tua destinazione (fai clic sul quartiere per viaggiare):")
         
-        # BOTTONI DELLE ZONE SOVRAPPOSTI ALLA MAPPA
+        # BOTTONI INTERATTIVI DELLE ZONE
         tutte_le_zone = list(config['zones'].keys())
         cols = st.columns(len(tutte_le_zone))
         for i, z_key in enumerate(tutte_le_zone):
@@ -295,39 +294,39 @@ with tab_gioca:
         st.markdown('</div>', unsafe_allow_html=True)
         st.divider()
 
-        # VIDEO DEL QUARTIERE E INCONTRO CON L'AGENTE AI
+        # VIDEO DEL QUARTIERE (SE C'È) E SUBITO DIALOGO CON L'AGENTE AI
         video_chiave = f"{padrone_casa_id}_video"
         if st.session_state.video_zona_visto != zona_id:
-            st.markdown(f"### 🎬 Arrivo a {nome_zona}")
-            ha_riprodotto = riproduci_video(video_chiave)
-            if ha_riprodotto:
-                if st.button("🎮 INCONTRA IL PERSONAGGIO DI QUESTA ZONA", use_container_width=True):
+            percorso_vid = trova_video(video_chiave)
+            if percorso_vid:
+                st.markdown(f"### 🎬 Arrivo a {nome_zona}")
+                riproduci_video(video_chiave)
+                if st.button("🎮 INCONTRA SUBITO L'AGENTE AI", use_container_width=True):
                     st.session_state.video_zona_visto = zona_id
                     st.rerun()
             else:
+                # Se il video non c'è, passa subito al dialogo!
                 st.session_state.video_zona_visto = zona_id
 
-        # DIALOGO CON L'AGENTE AI
+        # DIALOGO DIRETTO CON L'AGENTE AI DEL POSTO!
         if st.session_state.video_zona_visto == zona_id:
             agenti_presenti = engine.available_agents(s, config)
             if agenti_presenti:
-                st.success(f"🔍 Ti trovi a {nome_zona}!")
+                st.success(f"🔍 Sei arrivato a {nome_zona}!")
                 for ag_id in agenti_presenti:
                     ag_dati = config['agents'][ag_id]
                     ag_nome = ag_dati['name']
                     col_ritratto, col_chat = st.columns([1, 3])
                     
-                    # COLONNA DI SINISTRA: FOTO + TASTO UPDATE BIO SOTTO IL PERSONAGGIO
+                    # FOTO E UPDATE BIO
                     with col_ritratto:
                         mostra_foto(ag_id, f"Incontri: {ag_nome}")
                         
-                        # 📸 CAMBIA FOTO
                         with st.expander(f"👤 Cambia Foto {ag_nome}"):
                             foto_ag_nuova = st.file_uploader(f"Foto {ag_nome}", type=["png", "jpg", "jpeg"], key=f"up_ag_{ag_id}")
                             if st.button(f"💾 Salva Foto {ag_nome}", key=f"btn_ag_{ag_id}"):
                                 salva_foto_caricata(foto_ag_nuova, ag_id)
                         
-                        # 📝 UPDATE BIO RAPIDO
                         with st.expander(f"📝 Update Bio ({ag_nome})"):
                             testo_bio = st.text_area("Biografia & Comportamento:", value=ag_dati.get("biography", ""), key=f"bio_txt_{ag_id}", height=120)
                             if st.button(f"💾 Salva Bio Rapida", key=f"btn_bio_{ag_id}"):
@@ -336,10 +335,10 @@ with tab_gioca:
                                 st.success(f"🎉 Biografia di {ag_nome} aggiornata!")
                                 st.rerun()
                     
-                    # COLONNA DI DESTRA: CHAT CON L'AGENTE AI
+                    # CHAT E PARLATA CON L'AGENTE AI
                     with col_chat:
-                        st.write(f"### 🗣️️ Stai parlando con: {ag_nome}")
-                        st.info(f"📜 **Ruolo & Storia:**\n\n_{ag_dati.get('biography', 'Nessuna biografia impostata.')}_")
+                        st.write(f"### 🗣️ Stai parlando con: {ag_nome}")
+                        st.info(f"📜 **Ruolo & Comportamento:**\n\n_{ag_dati.get('biography', 'Nessuna biografia impostata.')}_")
                         st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id, 50)}/100")
                         
                         frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"txt_{ag_id}")
@@ -370,10 +369,12 @@ with tab_gioca:
                             else:
                                 st.info(f"{ag_nome}: «Io non sono Lizzie! Cerca Lizzie al suo Bar a Santa Croce!»")
                     st.write("---")
+            else:
+                st.info(f"🌫️ In questa zona di {nome_zona} non c'è nessun personaggio al momento. Scegli un altro quartiere sulla mappa!")
 
 # --- TAB 2: MAPPA & CARICAMENTO FOTO ---
 with tab_mappa:
-    st.subheader("🗺️ Mappa Geografica di Venezia")
+    st.subheader("🗺️️ Mappa Geografica di Venezia")
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     
     with st.expander("📸 Carica o cambia l'Immagine della Mappa"):
