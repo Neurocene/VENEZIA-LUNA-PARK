@@ -4,9 +4,12 @@ import base64
 import streamlit as st
 import engine
 
-# 1. PREPARIAMO IL BANCO DI LAVORO
+# ---------------------------------------------------------
+# 1. IL NOSTRO BANCO DI LAVORO LEGO (CONFIGURAZIONE PAGINA)
+# ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
 
+# Controlliamo che la scatola 'assets' esista sul computer
 if not os.path.exists("assets"):
     os.makedirs("assets")
 
@@ -16,7 +19,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# CANNOCCHIALE PER TROVARE LE FOTO (.png o .jpg)
+# CANNOCCHIALE PER LE FOTO (.png o .jpg)
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -29,7 +32,7 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# CANNOCCHIALE PER TROVARE I VIDEO (.mp4)
+# CANNOCCHIALE PER I VIDEO (.mp4)
 def trova_video(nome):
     percorso = os.path.join("assets", f"{nome}.mp4")
     if os.path.exists(percorso):
@@ -85,7 +88,7 @@ def imposta_sfondo_copertina():
         )
 
 # ---------------------------------------------------------
-# STAZIONE 1: PRIMA PAGINA CON PASSWORD (ENTRA O TASTO ENTER)
+# STAZIONE 1: PRIMA PAGINA CON PASSWORD
 # ---------------------------------------------------------
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
@@ -111,7 +114,7 @@ if not st.session_state.autenticato:
     st.stop()
 
 # ---------------------------------------------------------
-# STAZIONE 2: VIDEO INIZIALE (intro.mp4)
+# STAZIONE 2: VIDEO INIZIALE DI INTRODUZIONE (intro.mp4)
 # ---------------------------------------------------------
 if not st.session_state.video_intro_visto:
     st.markdown("## 🎬 Introduzione a Venezia Luna Park")
@@ -120,15 +123,15 @@ if not st.session_state.video_intro_visto:
     if percorso_video_intro:
         st.video(percorso_video_intro)
     else:
-        st.info("ℹ️ Il video `assets/intro.mp4` non è ancora caricato. Clicca sotto per andare alla Mappa!")
+        st.info("ℹ️ Il video `assets/intro.mp4` non è ancora caricato. Clicca sotto per proseguire!")
 
-    if st.button("▶ CONTINUA ALLA MAPPA DI VENEZIA", use_container_width=True):
+    if st.button("▶ CONTINUA AL GIOCO", use_container_width=True):
         st.session_state.video_intro_visto = True
         st.rerun()
     st.stop()
 
 # ---------------------------------------------------------
-# STAZIONE 3 & 4: IL GIOCO E LA MAPPA INTERATTIVA
+# STAZIONE 3 & 4: IL MOTORE DEL GIOCO
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -181,11 +184,59 @@ with tab_gioca:
         else:
             st.error(f"❌ GAME OVER: {s['status'].replace('_', ' ').upper()}")
             
+    # FASE INIZIALE: IL PATTO CON BRAGO (SENZA ERRORE!)
+    elif s['phase'] == 'intro':
+        st.markdown("## 🎭 Benvenuto a Venezia Luna Park!")
+        st.info("🌊 Ti svegli ai margini della laguna dopo una grande piena. Davanti a te c'è Brago.")
+        st.divider()
+
+        st.subheader("🐖 La Proposta di Brago")
+        col_brago_foto, col_brago_testo = st.columns([1, 2])
+        
+        with col_brago_foto:
+            mostra_foto("brago", "Personaggio: Brago")
+            with st.expander("👤 Cambia Foto Brago"):
+                nuova_foto_brago = st.file_uploader("Scegli foto per Brago", type=["png", "jpg", "jpeg"], key="up_brago")
+                if st.button("💾 Salva Foto Brago", key="btn_brago"):
+                    salva_foto_caricata(nuova_foto_brago, "brago")
+
+        with col_brago_testo:
+            st.write(
+                "🗣️ *«Recupera l'amplificatore a San Marco entro 48 ore. "
+                "Se me lo riporti saremo amici e ti aiuterò. Se rifiuti... diventerai mio schiavo!»*"
+            )
+            st.write("")
+            st.write("### ❓ Cosa vuoi fare?")
+
+            col_accetta, col_rifiuta = st.columns(2)
+            with col_accetta:
+                st.success("🤝 **OPZIONE 1: ACCETTA IL PATTO**")
+                if st.button("✅ Accetta e Sblocca la Mappa", use_container_width=True):
+                    engine.transaction(s, engine.interrogate, config, True)
+                    st.rerun()
+
+            with col_rifiuta:
+                st.error("💥 **OPZIONE 2: RIFIUTA IL PATTO**")
+                if st.button("❌ Rifiuta e tenta la Fuga", use_container_width=True):
+                    engine.transaction(s, engine.escape, config, False)
+                    st.rerun()
+
+    elif s['phase'] == 'schiavitu':
+        mostra_foto("brago", "Prigioniero nella Laguna")
+        st.warning("⛓ Sei stato reso schiavo dal Porco!")
+        col_f1, col_f2 = st.columns(2)
+        if col_f1.button("🏃 Fuga durante il recupero", use_container_width=True):
+            engine.transaction(s, engine.escape, config, 'recupero')
+            st.rerun()
+        if col_f2.button("🎵 Fuga durante il concerto", use_container_width=True):
+            engine.transaction(s, engine.escape, config, 'concerto')
+            st.rerun()
+
+    # FASE ESPLORAZIONE: ORA LA MAPPA FUNZIONA PERFETTAMENTE!
     else:
         st.write("## 🗺️ Mappa Interattiva di Venezia")
         st.caption("Fai clic su un quartiere per viaggiare!")
         
-        # COSTRUIAMO LA MAPPA INTERATTIVA CON LA FOTO DI SFONDO
         percorso_mappa = trova_foto("mappa_venezia")
         if percorso_mappa:
             with open(percorso_mappa, "rb") as file_m:
@@ -204,9 +255,6 @@ with tab_gioca:
                     border: 3px solid #FFD700;
                     margin-bottom: 20px;
                 }}
-                .stButton button {{
-                    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
-                }}
                 </style>
                 """,
                 unsafe_allow_html=True
@@ -215,7 +263,6 @@ with tab_gioca:
         st.markdown('<div class="mappa-container">', unsafe_allow_html=True)
         st.markdown("### 🧭 Scegli la tua prossima destinazione sulla Mappa:")
         
-        # CREIAMO I BOTTONI INTERATTIVI SOVRAPPOSTI SULLA MAPPA
         vicini = config['zones'][s['location']]['neighbors']
         cols = st.columns(len(vicini))
         for i, n_id in enumerate(vicini):
