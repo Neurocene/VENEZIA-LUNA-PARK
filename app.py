@@ -5,11 +5,11 @@ import streamlit as st
 import engine
 
 # ---------------------------------------------------------
-# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE PAGINA WEB)
+# 1. IL NOSTRO BANCO DI LAVORO LEGO (CONFIGURAZIONE PAGINA WEB)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione Lizzie Bar", layout="wide", page_icon="🎭")
 
-# Verifichiamo che le cartelle 'assets' e 'data' esistano sul computer
+# Controlliamo che le cartelle 'assets' e 'data' esistano sul computer
 if not os.path.exists("assets"):
     os.makedirs("assets")
 
@@ -52,7 +52,7 @@ def riproduci_video(nome):
             st.video(bytes_video)
             return True
         except Exception as e:
-            st.warning(f"⚠️ Errore durante la riproduzione del video: {e}")
+            st.warning(f"⚠️️ Errore durante la riproduzione del video: {e}")
             return False
     return False
 
@@ -257,7 +257,7 @@ with tab_gioca:
             
     else:
         st.write("## 🗺️ Mappa Interattiva di Venezia")
-        st.caption("Fai clic su un quartiere per viaggiare, incontrare l'Agente AI di quella zona e farti invitare al Lizzie Bar!")
+        st.caption("Fai clic su un quartiere per viaggiare, incontrare l'Agente AI associato e iniziare subito la chat!")
         
         # MAPPA INTERATTIVA SULLO SFONDO
         percorso_mappa = trova_foto("mappa_venezia")
@@ -284,9 +284,9 @@ with tab_gioca:
             )
 
         st.markdown('<div class="mappa-container">', unsafe_allow_html=True)
-        st.markdown("### 🧭 Scegli la tua destinazione sulla Mappa:")
+        st.markdown("### 🧭 Scegli il quartiere da visitare:")
         
-        # BOTTONI INTERATTIVI DELLE ZONE
+        # BOTTONI INTERATTIVI ASSOCIATI A CIASCUNA ZONA
         tutte_le_zone = list(config['zones'].keys())
         cols = st.columns(len(tutte_le_zone))
         for i, z_key in enumerate(tutte_le_zone):
@@ -306,26 +306,25 @@ with tab_gioca:
             if percorso_vid:
                 st.markdown(f"### 🎬 Arrivo a {nome_zona}")
                 riproduci_video(video_chiave)
-                if st.button("🎮 INCONTRA GLI AGENTI AI DI QUESTA ZONA", use_container_width=True):
+                if st.button("🎮 INCONTRA E PARLA CON L'AGENTE AI", use_container_width=True):
                     st.session_state.video_zona_visto = zona_id
                     st.rerun()
             else:
                 st.session_state.video_zona_visto = zona_id
 
-        # DIALOGO DIRETTO CON GLI AGENTI AI!
+        # CHAT DIRETTA CON L'AGENTE AI ASSOCIATO ALLA ZONA!
         if st.session_state.video_zona_visto == zona_id:
             
-            # CASO SPECIALE: SANTA CROCE (IL LIZZIE BAR DOVE CI SONO TUTTI GLI AGENTI!)
+            # CASO SPECIALE: SANTA CROCE / LIZZIE BAR (DOVE CI SONO TUTTI GLI AGENTI!)
             if zona_id == "lizzie_bar" or nome_zona.lower() == "santa croce":
                 st.markdown("## 🍸 Benvenuto al Lizzie Bar!")
                 
                 if len(s["pass_vip_raccolti"]) < 3:
-                    st.error(f"🛑 **I BOTTAFUORI TI BLOCCANO L'INGRESSO!**\n\n«Non puoi entrare al Lizzie Bar! Servono almeno 3 Pass VIP da altri personaggi per dimostrare che sei un tipo fidato. Al momento ne hai solo **{len(s['pass_vip_raccolti'])}/3**!»")
-                    st.info("💡 **Consiglio:** Viaggia negli altri quartieri sulla mappa, parla con i personaggi e farti regalare i loro Pass VIP!")
+                    st.error(f"🛑 **I BOTTAFUORI TI BLOCCANO L'INGRESSO!**\n\n«Non puoi entrare al Lizzie Bar! Servono almeno 3 Pass VIP raccolti dagli altri personaggi. Al momento ne hai solo **{len(s['pass_vip_raccolti'])}/3**!»")
+                    st.info("💡 **Consiglio:** Viaggia negli altri quartieri sulla mappa, parla con i personaggi e fatti dare i loro Pass VIP!")
                 else:
-                    st.success("🎉 **BENVENUTO AL LIZZIE BAR!** La festa è al culmine e **tutti gli Agenti AI di Venezia sono riuniti qui**!")
+                    st.success("🎉 **BENVENUTO AL LIZZIE BAR!** La festa è al culmine e **tutti gli Agenti AI sono riuniti qui**!")
                     
-                    # VEDIAMO TUTTI GLI AGENTI RIUNITI AL BAR
                     for ag_id, ag_dati in config['agents'].items():
                         ag_nome = ag_dati['name']
                         col_ritratto, col_chat = st.columns([1, 3])
@@ -336,19 +335,19 @@ with tab_gioca:
                         with col_chat:
                             st.write(f"### 🗣️ {ag_nome}")
                             if ag_id == "lizzie":
-                                st.write("🎤 **Lizzie è sul palco pronta ad ascoltarti!**")
+                                st.write("🎤 **Lizzie è sul palco ed è pronta ad ascoltarti!**")
                                 if st.button("💌 CONSEGNA IL MESSAGGIO SEGRETO A LIZZIE!", key="win_btn", use_container_width=True):
                                     s['status'] = 'vittoria'
                                     st.rerun()
                             else:
-                                st.write(f"🎉_{ag_nome} si sta godendo la festa al Lizzie Bar!_")
+                                st.write(f"🎉 _{ag_nome} si sta godendo la festa al Lizzie Bar!_")
                         st.write("---")
 
-            # NEI NORMALI QUARTIERI: INCONTRI UN PERSONAGGIO PER VOLTA PER FARTO DARE IL PASS!
+            # NEI SINGOLI QUARTIERI: CHAT DIRETTA CON IL PERSONAGGIO ASSOCIATO
             else:
                 agenti_presenti = engine.available_agents(s, config)
                 if agenti_presenti:
-                    st.success(f"🔍 Sei arrivato a {nome_zona}!")
+                    st.success(f"🔍 Ti trovi a {nome_zona}! Ecco il personaggio del posto:")
                     for ag_id in agenti_presenti:
                         ag_dati = config['agents'][ag_id]
                         ag_nome = ag_dati['name']
@@ -371,33 +370,33 @@ with tab_gioca:
                                     st.success(f"🎉 Biografia di {ag_nome} aggiornata!")
                                     st.rerun()
                         
-                        # CHAT CON L'AGENTE
+                        # CHAT INNESCATA SUBITO CON L'AGENTE AI!
                         with col_chat:
-                            st.write(f"### 🗣️ Stai parlando con: {ag_nome}")
-                            st.info(f"📜 **Ruolo & Comportamento:**\n\n_{ag_dati.get('biography', 'Nessuna biografia impostata.')}_")
+                            st.write(f"### 🗣️ CHAT CON: {ag_nome}")
+                            st.info(f"📜 **Comportamento & Ruolo Agente:**\n\n_{ag_dati.get('biography', 'Nessuna biografia impostata.')}_")
                             st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id, 50)}/100")
                             
-                            frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"txt_{ag_id}")
+                            frase = st.text_input(f"Scrivi un messaggio a {ag_nome}:", key=f"txt_{ag_id}")
                             col_d1, col_d2 = st.columns(2)
                             
-                            if col_d1.button("💬 Chiacchiera con Rispetto (+Fiducia)", key=f"fav_{ag_id}"):
+                            if col_d1.button("💬 Rispondi con Rispetto (+Fiducia)", key=f"fav_{ag_id}"):
                                 risposta = engine.transaction(s, engine.dialogue, config, ag_id, 'respect', frase)
                                 st.success(f"{ag_nome}: {risposta}")
                                 st.rerun()
                                 
                             if col_d2.button("🎟️ Chiedi Pass VIP per il Lizzie Bar", key=f"vip_{ag_id}"):
                                 if ag_id in s["pass_vip_raccolti"]:
-                                    st.info(f"🎟️ Hai già ricevuto il Pass VIP da {ag_nome}!")
+                                    st.info(f"🎟️ Hai già ottenuto il Pass VIP da {ag_nome}!")
                                 elif s['trust'].get(ag_id, 50) >= 50:
                                     s["pass_vip_raccolti"].append(ag_id)
                                     st.balloons()
-                                    st.success(f"🎉 {ag_nome}: «Sei proprio simpatico! Ecco il mio Pass VIP per il Lizzie Bar!» (Totale Pass: {len(s['pass_vip_raccolti'])}/3)")
+                                    st.success(f"🎉 {ag_nome}: «Mi piace come parli! Ti do il mio Pass VIP per entrare al Lizzie Bar!» (Totale Pass: {len(s['pass_vip_raccolti'])}/3)")
                                 else:
-                                    st.error(f"❌ {ag_nome}: «Non ti conosco abbastanza per farti entrare al party esclusivo di Lizzie! Parlami ancora e guadagnati la mia fiducia!»")
+                                    st.error(f"❌ {ag_nome}: «Non ti conosco abbastanza per farti entrare al party di Lizzie! Parlami ancora e guadagnati la mia fiducia!»")
                                 st.rerun()
                         st.write("---")
                 else:
-                    st.info(f"🌫️ In questa zona di {nome_zona} non c'è nessun personaggio al momento. Scegli un altro quartiere sulla mappa!")
+                    st.info(f"🌫️ In questo quartiere ({nome_zona}) non c'è nessun personaggio al momento. Scegli un'altra zona sulla mappa!")
 
 # --- TAB 2: MAPPA & CARICAMENTO FOTO ---
 with tab_mappa:
@@ -419,5 +418,5 @@ with tab_personaggi:
         with col_info:
             st.write(f"### {dati_p['name']}")
             st.write(f"**Biografia & Istruzioni Agente:** {dati_p.get('biography', 'Nessuna biografia.')}")
-            st.write(f"**Pass VIP Regalato:** {'✅ Sì' if id_p in s.get('pass_vip_raccolti', []) else '❌ No'}")
+            st.write(f"**Pass VIP Ottenuto:** {'✅ Sì' if id_p in s.get('pass_vip_raccolti', []) else '❌ No'}")
         st.write("---")
