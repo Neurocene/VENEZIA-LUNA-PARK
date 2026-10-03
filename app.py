@@ -24,7 +24,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# 📖 CANNOCCHIALE PER LEGGERE LA BIO DENTRO DATA/
+# 📖 CANNOCCHIALE PER LEGGERE LA BIO DENTRO DATA/ (FLESSIBILE)
 def carica_bio_personaggio(id_personaggio, bio_default=""):
     nomi_da_provare = [
         f"{id_personaggio}.txt",
@@ -161,7 +161,6 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     
     try:
         client = genai.Client(api_key=api_key)
-        
         modelli_da_provare = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
         
         for mod in modelli_da_provare:
@@ -289,16 +288,18 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 CHARACTER'S LAB (A SCOMPARSA SU LA SINISTRA)
+# 🚪 CHARACTER'S LAB (CON LA CASELLINA DORATA PER LA CHIAVE!)
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
         st.header("🎭 CHARACTER'S LAB")
         st.caption("Pannello di controllo degli Agenti AI!")
 
-        gemini_key_secrets = st.secrets.get("GEMINI_API_KEY", "")
         if "gemini_key_utente" not in st.session_state:
-            st.session_state.gemini_key_utente = gemini_key_secrets
+            try:
+                st.session_state.gemini_key_utente = st.secrets.get("GEMINI_API_KEY", "")
+            except Exception:
+                st.session_state.gemini_key_utente = ""
 
         chiave_input = st.text_input("🔑 Incolla qui la tua Chiave API Gemini:", value=st.session_state.gemini_key_utente, type="password")
         if chiave_input:
@@ -332,7 +333,7 @@ if st.session_state.mostra_lab:
             nuovo_nome = st.text_input("Nome Personaggio:")
             nuova_bio = st.text_area("Biografia & Istruzioni AI:")
             n_missione = st.text_area("🎯 Programma 72 Ore:")
-            n_motore = st.text_area("⚙️ Motore Decisionale:")
+            n_motore = st.text_area("⚙️️ Motore Decisionale:")
             n_diario = st.text_area("📓 Diario di Partita:")
             zona_assegnata = st.selectbox("Zona di Venezia:", list(config['zones'].keys()))
 
@@ -528,8 +529,7 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        # PRENDIAMO PRIMA LA CHIAVE DAI SECRETS, ALTRIMENTI DA SESSION STATE
-                        gemini_key = st.secrets.get("GEMINI_API_KEY", "") or st.session_state.get("gemini_key_utente", "")
+                        gemini_key = st.session_state.get("gemini_key_utente", "")
                         
                         if gemini_key:
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
