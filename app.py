@@ -83,41 +83,41 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 CERVELLO GEMINI ULTRA VELOCE E RESISTENTE
+# 🧠 CERVELLO GEMINI SUPER INTELLIGENTE CON MEMORIA
 def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
     istruzioni_sistema = f"""
     Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
-    Non uscire MAI dal personaggio. Rispondi in italiano in modo immersivo, breve e diretto (massimo 2-3 frasi).
+    NON ripetere mai le stesse frasi già dette prima! Sii vario, creativo e reattivo.
+    Rispondi sempre in modo immersivo e coerente con la tua biografia, mantenendo la risposta breve (massimo 2-3 frasi).
     
-    Ecco la tua Biografia e Regole comportamentali:
+    Biografia e Regole comportamentali:
     {bio_personaggio}
     """
     
-    # Costruiamo il contesto completo con la storia della conversazione
+    # Includiamo gli ultimi messaggi per non far finta di niente!
     testo_cronologia = ""
-    for msg in cronologia_chat[-4:]: # Ricorda gli ultimi 4 messaggi
+    for msg in cronologia_chat[-6:]:
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\nStorico conversazione:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
+    prompt_completo = f"{istruzioni_sistema}\n\nStorico della chat:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
     
     modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
     
     for mod in modelli:
-        for t in range(2):
-            try:
-                response = client.models.generate_content(
-                    model=mod,
-                    contents=prompt_completo,
-                )
-                if response.text and response.text.strip():
-                    return response.text.strip()
-            except Exception:
-                time.sleep(1)
-                
-    return f"«Ehi! C'è troppa confusione qui nei canali di Venezia in questo momento... Dimmi pure di nuovo, ti ascolto!»"
+        try:
+            response = client.models.generate_content(
+                model=mod,
+                contents=prompt_completo,
+            )
+            if response.text and response.text.strip():
+                return response.text.strip()
+        except Exception:
+            time.sleep(1)
+            
+    return f"«Ehi! Mi sono distratto un attimo tra le calli... Rispiegami cosa dicevi!»"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -193,7 +193,7 @@ if not st.session_state.video_intro_visto:
     st.stop()
 
 # ---------------------------------------------------------
-# STAZIONE 3: AVVIO MOTORE DEL GIOCO E CRONOLOGIA CHAT
+# STAZIONE 3: AVVIO MOTORE DEL GIOCO
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -231,7 +231,7 @@ st.divider()
 # ---------------------------------------------------------
 with st.sidebar:
     st.header("🎯 Missione Principale")
-    st.write("✉️️ **Consegna il messaggio segreto a Lizzie al Lizzie Bar!**")
+    st.write("✉️ **Consegna il messaggio segreto a Lizzie al Lizzie Bar!**")
     st.write(f"🎟️ **Pass VIP per entrare:** {len(s['pass_vip_raccolti'])}/3 per sbloccare il Bar!")
     st.divider()
 
@@ -401,16 +401,20 @@ with tab_gioca:
 
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
 
-                # INIZIALIZZA CRONOLOGIA PER QUESTO PERSONAGGIO
+                # PREPARIAMO LA MEMORIA PER QUESTO PERSONAGGIO
                 if ag_id_trovato not in st.session_state.chat_history:
                     st.session_state.chat_history[ag_id_trovato] = []
 
-                # MOSTRA I MESSAGGI PRECEDENTI DELLA CHAT
-                for msg in st.session_state.chat_history[ag_id_trovato]:
-                    if msg["role"] == "user":
-                        st.markdown(f"👤 **Tu:** {msg['content']}")
-                    else:
-                        st.markdown(f"🤖 **{ag_nome}:** {msg['content']}")
+                # MOSTRA I FUMETTI DELLA CONVERSAZIONE
+                container_chat = st.container(height=300)
+                with container_chat:
+                    if not st.session_state.chat_history[ag_id_trovato]:
+                        st.caption(f"💬 Non hai ancora parlato con {ag_nome}. Scrivigli qualcosa!")
+                    for msg in st.session_state.chat_history[ag_id_trovato]:
+                        if msg["role"] == "user":
+                            st.chat_message("user").write(msg['content'])
+                        else:
+                            st.chat_message("assistant").write(f"**{ag_nome}:** {msg['content']}")
 
                 frase_utente = st.text_input(f"Scrivi un messaggio a {ag_nome}:", key=f"chat_input_{ag_id_trovato}")
                 
@@ -419,10 +423,10 @@ with tab_gioca:
                 if col_btn1.button("💬 Invia Messaggio (Gemini AI)", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
                         if gemini_key:
-                            # Aggiungi il messaggio dell'utente alla storia
+                            # 1. Salva la tua frase nel taccuino
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             
-                            with st.spinner(f"⚡ {ag_nome} sta pensando..."):
+                            with st.spinner(f"⚡ {ag_nome} sta riflettendo..."):
                                 risposta_ai = fai_parlare_agente_gemini(
                                     gemini_key, 
                                     ag_nome, 
@@ -430,7 +434,7 @@ with tab_gioca:
                                     frase_utente,
                                     st.session_state.chat_history[ag_id_trovato]
                                 )
-                                # Aggiungi la risposta dell'AI alla storia
+                                # 2. Salva la risposta di Rosko nel taccuino
                                 st.session_state.chat_history[ag_id_trovato].append({"role": "assistant", "content": risposta_ai})
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
@@ -444,7 +448,7 @@ with tab_gioca:
                 else:
                     if col_btn2.button("🎟️ Chiedi Pass VIP per il Lizzie Bar", key=f"pass_{ag_id_trovato}", use_container_width=True):
                         if ag_id_trovato in s["pass_vip_raccolti"]:
-                            st.info(f"🎟️ Hai già ottenuto il Pass VIP da {ag_nome}!")
+                            st.info(f"🎟️️ Hai già ottenuto il Pass VIP da {ag_nome}!")
                         elif s['trust'].get(ag_id_trovato, 50) >= 50:
                             s["pass_vip_raccolti"].append(ag_id_trovato)
                             st.balloons()
@@ -454,7 +458,7 @@ with tab_gioca:
 
 # --- TAB 2: MAPPA & CARICAMENTO FOTO ---
 with tab_mappa:
-    st.subheader("🗺️ Mappa Geografica di Venezia")
+    st.subheader("🗺️️ Mappa Geografica di Venezia")
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     with st.expander("📸 Carica o cambia l'Immagine della Mappa"):
         nuova_foto_mappa_tab = st.file_uploader("Scegli immagine per la Mappa:", type=["png", "jpg", "jpeg"], key="up_map_tab")
