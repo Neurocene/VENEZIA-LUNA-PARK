@@ -7,7 +7,7 @@ import engine
 from google import genai
 
 # ---------------------------------------------------------
-# 1. CONFIGURAZIONE BASE DEL GIOCO
+# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione 72 Ore", layout="wide", page_icon="🎭")
 
@@ -23,6 +23,14 @@ def carica_mondo():
 
 config = carica_mondo()
 
+# 📖 LEGGERE LA BIO DAL CASSETTO DATA/
+def carica_bio_personaggio(id_personaggio, bio_default=""):
+    percorso_bio = os.path.join("data", f"{id_personaggio}.txt")
+    if os.path.exists(percorso_bio):
+        with open(percorso_bio, "r", encoding="utf-8") as f:
+            return f.read()
+    return bio_default
+
 # 📖 LEGGERE LA BIBBIA DEL MONDO (data/bibbia.txt)
 def carica_bibbia_mondo():
     percorso_bibbia = os.path.join("data", "bibbia.txt")
@@ -30,14 +38,6 @@ def carica_bibbia_mondo():
         with open(percorso_bibbia, "r", encoding="utf-8") as f:
             return f.read()
     return "Venezia Luna Park è una città viva. Ogni personaggio ha compiti da svolgere nelle 72 ore."
-
-# 📖 LEGGERE IL FILE BIO (.txt)
-def carica_bio_personaggio(id_personaggio, bio_default=""):
-    percorso_bio = os.path.join("data", f"{id_personaggio}.txt")
-    if os.path.exists(percorso_bio):
-        with open(percorso_bio, "r", encoding="utf-8") as f:
-            return f.read()
-    return bio_default
 
 # MAPPA QUARTIERI -> PERSONAGGI
 MAPPA_PERSONAGGI = {
@@ -88,7 +88,7 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         percorso_finale = os.path.join("assets", f"{nome_destinazione}.{est}")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Immagine salvata!")
+        st.success(f"🎉 Immagine salvata in assets!")
         st.rerun()
 
 def salva_video_caricato(file_caricato, nome_destinazione):
@@ -96,14 +96,14 @@ def salva_video_caricato(file_caricato, nome_destinazione):
         percorso_finale = os.path.join("assets", f"{nome_destinazione}_video.mp4")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Video salvato!")
+        st.success(f"🎉 Video salvato in assets!")
         st.rerun()
 
 def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 MOTORE AI DINAMICO (SI ADATTA ALL'ORA DEL GIOCO!)
+# 🧠 MOTORE AI DINAMICO (ADATTATO ALL'ORA DEL GIOCO)
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
@@ -127,21 +127,21 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     📜 BIBBIA DEL MONDO (SAPER COMUNE):
     {testo_bibbia}
     
-    🎭 CHI SEI TU & PERSONALITÀ:
+    🎭 CHI SEI TU & PERSONALITÀ (DALLA BIO IN DATA/):
     {bio_effettiva}
     
     🎯 IL TUO PIANO PER LE 72 ORE:
     {missione_72h}
     
-    ⚙️ MOTORE DELLE TUE DECISIONI:
+    ⚙️️ MOTORE DELLE TUE DECISIONI:
     {motore_dec}
     
     📓 DIARIO DELLE TUE AZIONI FINORA:
     {diario_p}
     
     REGOLE DI INTERAZIONE CON IL GIOCATORE:
-    1. Tieni conto dell'ora attuale ({ora_narrativa}/72). Chiedi aiuto al giocatore in base a quello di cui hai bisogno PROPRIO IN QUESTO MOMENTO della giornata!
-    2. Se il giocatore ti convince o ti aiuta davvero, puoi concedergli l'accesso o l'invito per il Lizzie Bar per la serata!
+    1. Tieni conto dell'ora attuale ({ora_narrativa}/72). Chiedi aiuto al giocatore in base a quello di cui hai bisogno PROPRIO IN QUESTO MOMENTO!
+    2. Se il giocatore ti convince o ti aiuta davvero, concedigli il tuo supporto per la serata!
     3. Rispondi sempre in italiano, brevemente (2-3 frasi) e con il tuo stile unico.
     """
     
@@ -252,7 +252,7 @@ zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
 
 # ---------------------------------------------------------
-# CRUSCOTTO IN ALTO (TIMER 72 ORE + TABELLONE)
+# CRUSCOTTO IN ALTO
 # ---------------------------------------------------------
 col_btn_lab, col1, col2, col_luogo, col5 = st.columns([1.5, 1, 1, 2, 1])
 
@@ -275,12 +275,12 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 CHARACTER'S LAB (A SCOMPARSA)
+# 🚪 CHARACTER'S LAB (A SCOMPARSA SU LA SINISTRA)
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
         st.header("🎭 CHARACTER'S LAB")
-        st.caption("Pannello di controllo della vita autonoma degli Agenti!")
+        st.caption("Pannello di controllo degli Agenti AI!")
 
         gemini_key = st.secrets.get("GEMINI_API_KEY", "")
         if not gemini_key:
@@ -289,6 +289,7 @@ if st.session_state.mostra_lab:
         st.divider()
         st.subheader("🖼️ Agenti in Fila")
 
+        # FILA DELLE FIGURINE DEI PERSONAGGI
         for id_agent, info_agent in config['agents'].items():
             col_fig_foto, col_fig_nome = st.columns([1, 2])
             with col_fig_foto:
@@ -310,12 +311,12 @@ if st.session_state.mostra_lab:
 
         if sel_ag == "NUOVO":
             st.markdown("### 🆕 Crea un Nuovo Agente AI")
-            nuovo_id = st.text_input("ID Segreto (es. `marco`):").strip().lower()
+            nuovo_id = st.text_input("ID Segreto (es. `klaus`):").strip().lower()
             nuovo_nome = st.text_input("Nome Personaggio:")
             nuova_bio = st.text_area("Biografia & Istruzioni AI:")
-            n_missione = st.text_area("🎯 Missione 72 Ore (Programma delle tre giornate):")
-            n_motore = st.text_area("⚙️ Motore Decisionale (Come reagisce al tempo/aiuto):")
-            n_diario = st.text_area("📓 Diario di Partita (Storico eventi):")
+            n_missione = st.text_area("🎯 Programma 72 Ore:")
+            n_motore = st.text_area("⚙️ Motore Decisionale:")
+            n_diario = st.text_area("📓 Diario di Partita:")
             zona_assegnata = st.selectbox("Zona di Venezia:", list(config['zones'].keys()))
 
             if st.button("✨ AGGIUNGI AGENTE AL GIOCO"):
@@ -332,11 +333,12 @@ if st.session_state.mostra_lab:
                         s['trust'][nuovo_id] = 50
                     salva_configurazione_mondo()
                     
+                    # SALVA IL FILE DIRECTLY IN DATA/
                     with open(os.path.join("data", f"{nuovo_id}.txt"), "w", encoding="utf-8") as f_nuovo:
                         f_nuovo.write(nuova_bio)
                         
                     st.session_state.agente_selezionato_lab = nuovo_id
-                    st.success(f"🎉 Agente '{nuovo_nome}' creato!")
+                    st.success(f"🎉 Agente '{nuovo_nome}' creato e salvato in `data/{nuovo_id}.txt`!")
                     st.rerun()
 
         elif sel_ag in config['agents']:
@@ -346,11 +348,13 @@ if st.session_state.mostra_lab:
             file_txt = st.file_uploader(f"📄 Carica File .txt per {ag_dati['name']}:", type=["txt"], key=f"lab_up_{sel_ag}")
             if file_txt is not None:
                 contenuto_testo = file_txt.read().decode("utf-8")
+                # SALVA AUTOMATICAMENTE IL FILE CARICATO IN DATA/
                 with open(os.path.join("data", f"{sel_ag}.txt"), "w", encoding="utf-8") as f_save_u:
                     f_save_u.write(contenuto_testo)
                 config['agents'][sel_ag]["biography"] = contenuto_testo
                 salva_configurazione_mondo()
-                st.success(f"🎉 File .txt caricato!")
+                st.success(f"🎉 File salvato con successo in `data/{sel_ag}.txt`!")
+                st.rerun()
 
             bio_att = carica_bio_personaggio(sel_ag, ag_dati.get("biography", ""))
             bio_mod = st.text_area("📜 Biografia & Comportamento:", value=bio_att, height=120)
@@ -359,7 +363,7 @@ if st.session_state.mostra_lab:
             m_dec = st.text_area("⚙️ Motore Decisionale:", value=ag_dati.get("motore_decisionale", ""), height=80)
             d_par = st.text_area("📓 Diario di Partita:", value=ag_dati.get("diario_partita", ""), height=80)
             
-            if st.button("💾 SALVA LE MODIFICHE"):
+            if st.button("💾 SALVA LE MODIFICHE IN DATA/"):
                 config['agents'][sel_ag]["biography"] = bio_mod
                 config['agents'][sel_ag]["missione_72h"] = m_72h
                 config['agents'][sel_ag]["motore_decisionale"] = m_dec
@@ -367,10 +371,11 @@ if st.session_state.mostra_lab:
                 
                 salva_configurazione_mondo()
                 
+                # SALVA LE MODIFICHE SCRITTE NEL FILE .TXT IN DATA/
                 with open(os.path.join("data", f"{sel_ag}.txt"), "w", encoding="utf-8") as f_out_txt:
                     f_out_txt.write(bio_mod)
                     
-                st.success(f"🎉 Scheda aggiornata!")
+                st.success(f"🎉 Scheda salvata nel file `data/{sel_ag}.txt`!")
                 st.rerun()
 
         st.divider()
@@ -381,7 +386,7 @@ if st.session_state.mostra_lab:
 st.divider()
 
 # ---------------------------------------------------------
-# INTERFACCIA PRINCIPALE
+# INTERFACCIA PRINCIPALE DEL GIOCO
 # ---------------------------------------------------------
 tab_gioca, tab_mappa, tab_personaggi = st.tabs([
     "🎮 Gioca & Esplora", "🗺️ Mappa di Venezia", "👤 Diario Personaggi"
@@ -445,7 +450,6 @@ with tab_gioca:
         if not ag_id_trovato:
             ag_id_trovato = config['zones'][zona_id].get('owner', 'brago')
 
-        # SEI AL LIZZIE BAR
         if "santa_croce" in zona_id.lower() or zona_id == "lizzie_bar":
             st.markdown("## 🍸 Lizzie Bar")
             st.info("ℹ️ Il Lizzie Bar apre le sue porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
