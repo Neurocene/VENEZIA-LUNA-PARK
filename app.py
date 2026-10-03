@@ -23,14 +23,21 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# 📖 CANNOCCHIALE PER LEGGERE LA BIBBIA DEL MONDO DAL FILE txt
+# 📖 CANNOCCHIALE PER LEGGERE LA BIBBIA DEL MONDO (data/bibbia.txt)
 def carica_bibbia_mondo():
     percorso_bibbia = os.path.join("data", "bibbia.txt")
     if os.path.exists(percorso_bibbia):
         with open(percorso_bibbia, "r", encoding="utf-8") as f:
             return f.read()
-    # Se il file non esiste ancora, usiamo queste regole di base!
-    return "Venezia Luna Park è un mondo di gioco. Per accedere al Lizzie Bar servono 3 Pass VIP."
+    return "Venezia Luna Park è un parco giochi misterioso. Per accedere al Lizzie Bar servono 3 Pass VIP."
+
+# 📖 CANNOCCHIALE PER LEGGERE IL FILE BIO DI UN PERSONAGGIO (es. data/alberic.txt)
+def carica_bio_personaggio(id_personaggio, bio_default=""):
+    percorso_bio = os.path.join("data", f"{id_personaggio}.txt")
+    if os.path.exists(percorso_bio):
+        with open(percorso_bio, "r", encoding="utf-8") as f:
+            return f.read()
+    return bio_default
 
 # MAPPA MAGICA DEGLI ABBINAMENTI ZONA -> PERSONAGGIO
 MAPPA_PERSONAGGI = {
@@ -88,26 +95,31 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 CERVELLO GEMINI: LEGGE LA BIBBIA DAL FILE DATA/BIBBIA.TXT
-def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore, cronologia_chat=[]):
+# 🧠 MOTORE GEMINI: APPLICA LA MASCHERA DI IMMERSIONE E LEGGE I FILE .TXT
+def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
-    # Leggiamo la Bibbia dal file!
     testo_bibbia = carica_bibbia_mondo()
+    bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
     
     istruzioni_sistema = f"""
-    Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
+    **********************************************************************
+    REGOLA MAGICA DI IMMERSIONE TOTALE:
+    - Tu sei {nome_personaggio}. Credi fermamente di essere questa persona!
+    - Non dire MAI di essere un'Intelligenza Artificiale, un robot o un assistente.
+    - Se il giocatore dice che sei un programma, prendilo in giro con la tua ironia personale!
+    **********************************************************************
     
-    📜 LA BIBBIA DEL MONDO (SAPER COMUNE DI TUTTI I PERSONAGGI):
+    📜 LA BIBBIA DEL MONDO (SAPER COMUNE, AMICI E NEMICI):
     {testo_bibbia}
     
-    REGOLE DI RECITAZIONE:
-    1. Vivi dentro il mondo descritto nella Bibbia qui sopra. Usa queste informazioni se servono durante la conversazione!
-    2. Mantieni SEMPRE la tua personalità speciale descritta nella tua Biografia Personale.
-    3. Rispondi in italiano in modo breve, naturale e mai ripetitivo (2-3 frasi massimo).
+    🎭 LA TUA SCHEDA PERSONALE, IRONIA E REGOLE:
+    {bio_effettiva}
     
-    La tua Biografia Personale:
-    {bio_personaggio}
+    REGOLE DI DIALOGO:
+    1. Rispondi in italiano con la tua ironia e il tuo stile unico.
+    2. Reagisci agli amici o ai nemici citati nella conversazione secondo le tue relazioni.
+    3. Rispondi in modo breve, teatrale e scattante (2-3 frasi al massimo).
     """
     
     testo_cronologia = ""
@@ -115,7 +127,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messag
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione precedente]:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione precedente]:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\n{nome_personaggio}:"
     
     modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
     
@@ -133,7 +145,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messag
             except Exception:
                 time.sleep(1)
                 
-    return f"«Ehi! Stavo pensando alle regole del Luna Park... Dimmi pure, cosa volevi chiedermi?»"
+    return f"«Ehi! Stavo pensando alla mia prossima mossa a Venezia... Rispiegami un po' cosa dicevi!»"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -256,7 +268,7 @@ with st.sidebar:
         gemini_key = st.text_input("🔑 Incolla la tua chiave API Gemini:", type="password")
 
     st.divider()
-    st.header("🛠️️ Laboratorio Agenti AI")
+    st.header("🛠️ Laboratorio Agenti AI")
     st.caption("Crea o modifica i personaggi direttamente da qui!")
 
     opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
@@ -279,7 +291,12 @@ with st.sidebar:
                 if nuovo_id not in s['trust']:
                     s['trust'][nuovo_id] = 50
                 salva_configurazione_mondo()
-                st.success(f"🎉 Agente '{nuovo_nome}' creato con successo!")
+                
+                # CREA AUTOMATICAMENTE IL FILE .TXT DENTRO DATA/
+                with open(os.path.join("data", f"{nuovo_id}.txt"), "w", encoding="utf-8") as f_nuovo:
+                    f_nuovo.write(nuova_bio)
+                    
+                st.success(f"🎉 Agente '{nuovo_nome}' creato con successo e salvato in `data/{nuovo_id}.txt`!")
                 st.rerun()
             else:
                 st.error("❌ Compila almeno l'ID segreto e il Nome!")
@@ -287,12 +304,19 @@ with st.sidebar:
     else:
         ag_dati = config['agents'][scelta_agente]
         st.markdown(f"#### ✏️ Modifica {ag_dati['name']}")
-        bio_modificata = st.text_area("Biografia & Istruzioni AI:", value=ag_dati.get("biography", ""), height=150)
+        
+        bio_attuale = carica_bio_personaggio(scelta_agente, ag_dati.get("biography", ""))
+        bio_modificata = st.text_area("Biografia & Istruzioni AI:", value=bio_attuale, height=150)
         
         if st.button("💾 Salva Modifiche Agente"):
             config['agents'][scelta_agente]["biography"] = bio_modificata
             salva_configurazione_mondo()
-            st.success(f"🎉 Biografia di '{ag_dati['name']}' salvata!")
+            
+            # AGGIORNA AUTOMATICAMENTE IL FILE .TXT DENTRO DATA/
+            with open(os.path.join("data", f"{scelta_agente}.txt"), "w", encoding="utf-8") as f_out_txt:
+                f_out_txt.write(bio_modificata)
+                
+            st.success(f"🎉 Biografia di '{ag_dati['name']}' salvata nel file `data/{scelta_agente}.txt`!")
             st.rerun()
 
     st.divider()
@@ -403,16 +427,22 @@ with tab_gioca:
             with col_destra:
                 st.subheader(f"💬 Chat con l'Agente AI ({ag_nome})")
                 
-                st.info(f"📜 **Comportamento dell'Agente:**\n\n_{ag_dati.get('biography', 'Nessuna biografia.')}_")
+                bio_per_schermo = carica_bio_personaggio(ag_id_trovato, ag_dati.get('biography', 'Nessuna biografia.'))
+                st.info(f"📜 **Comportamento dell'Agente:**\n\n_{bio_per_schermo}_")
                 
                 with st.expander(f"📄 Carica File con Bio e Regole per {ag_nome} (.txt)"):
                     file_txt_caricato = st.file_uploader("Scegli un file .txt:", type=["txt"], key=f"txt_up_{ag_id_trovato}")
                     if st.button(f"💾 SALVA NUOVA BIO E REGOLE", key=f"btn_save_txt_{ag_id_trovato}"):
                         if file_txt_caricato is not None:
                             contenuto_testo = file_txt_caricato.read().decode("utf-8")
+                            
+                            # SALVA AUTOMATICAMENTE NEL FILE .TXT IN DATA/
+                            with open(os.path.join("data", f"{ag_id_trovato}.txt"), "w", encoding="utf-8") as f_save_u:
+                                f_save_u.write(contenuto_testo)
+                                
                             config['agents'][ag_id_trovato]["biography"] = contenuto_testo
                             salva_configurazione_mondo()
-                            st.success(f"🎉 Nuova biografia e regole per '{ag_nome}' caricate con successo!")
+                            st.success(f"🎉 Nuova biografia e regole per '{ag_nome}' salvate in `data/{ag_id_trovato}.txt`!")
                             st.rerun()
 
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
@@ -443,6 +473,7 @@ with tab_gioca:
                                 risposta_ai = fai_parlare_agente_gemini(
                                     gemini_key, 
                                     ag_nome, 
+                                    ag_id_trovato,
                                     ag_dati.get('biography', ''), 
                                     frase_utente,
                                     st.session_state.chat_history[ag_id_trovato]
@@ -460,7 +491,7 @@ with tab_gioca:
                 else:
                     if col_btn2.button("🎟️ Chiedi Pass VIP per il Lizzie Bar", key=f"pass_{ag_id_trovato}", use_container_width=True):
                         if ag_id_trovato in s["pass_vip_raccolti"]:
-                            st.info(f"🎟️ Hai già ottenuto il Pass VIP da {ag_nome}!")
+                            st.info(f"🎟️️ Hai già ottenuto il Pass VIP da {ag_nome}!")
                         elif s['trust'].get(ag_id_trovato, 50) >= 50:
                             s["pass_vip_raccolti"].append(ag_id_trovato)
                             st.balloons()
@@ -486,6 +517,7 @@ with tab_personaggi:
             mostra_foto(id_p, dati_p['name'])
         with col_info:
             st.write(f"### {dati_p['name']}")
-            st.write(f"**Biografia & Istruzioni AI:** {dati_p.get('biography', 'Nessuna biografia.')}")
+            bio_diario = carica_bio_personaggio(id_p, dati_p.get('biography', 'Nessuna biografia.'))
+            st.write(f"**Biografia & Istruzioni AI:** {bio_diario}")
             st.write(f"**Pass VIP Ottenuto:** {'✅ Sì' if id_p in s.get('pass_vip_raccolti', []) else '❌ No'}")
         st.write("---")
