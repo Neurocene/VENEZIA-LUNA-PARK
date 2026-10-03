@@ -83,7 +83,7 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 CERVELLO GEMINI SUPER RESISTENTE (CON RE-TRY E MODELLI DI RISERVA)
+# 🧠 CERVELLO GEMINI GRATUITO E SUPER RESISTENTE
 def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore):
     client = genai.Client(api_key=api_key)
     
@@ -97,25 +97,22 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messag
     
     prompt_completo = f"{istruzioni_sistema}\n\nIl giocatore ti dice: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
     
-    # PROVIAMO DIVERSI MODELLI SE UNO È TROPPO PIENO (503)
-    modelli_da_provare = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']
+    # Prova i modelli gratuiti e super veloci
+    modelli_da_provare = ['gemini-1.5-flash', 'gemini-1.5-pro']
     
     for modello in modelli_da_provare:
-        for tentativo in range(3): # Ci prova fino a 3 volte per modello
+        for tentativo in range(3):
             try:
                 response = client.models.generate_content(
                     model=modello,
                     contents=prompt_completo,
                 )
-                return response.text
+                if response.text:
+                    return response.text
             except Exception as e:
-                # Se il server è occupato (503), aspetta 2 secondi e ci riprova!
-                if "503" in str(e) or "UNAVAILABLE" in str(e):
-                    time.sleep(2)
-                else:
-                    break # Se l'errore è un altro, passa al modello successivo
-                    
-    return "⚠️ I server Gemini sono molto occupati in questo secondo! Fai un bel respiro e riprova tra 5 secondi! 🤖"
+                time.sleep(2)
+                
+    return "😴 In questo momento le linee di comunicazione di Venezia sono intasate! Fai un respiro e riprova tra 5 secondi."
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -183,7 +180,7 @@ if not st.session_state.video_intro_visto:
     st.markdown("## 🎬 Introduzione a Venezia Luna Park")
     video_riprodotto = riproduci_video("VENEZIA LUNA PARK - thebeginning1")
     if not video_riprodotto:
-        st.info("ℹ️️ Il video iniziale non è stato trovato. Puoi proseguire cliccando il tasto sotto!")
+        st.info("ℹ️ Il video iniziale non è stato trovato. Puoi proseguire cliccando il tasto sotto!")
 
     if st.button("▶ APRI LA MAPPA DI VENEZIA", use_container_width=True):
         st.session_state.video_intro_visto = True
@@ -235,7 +232,7 @@ with st.sidebar:
         gemini_key = st.text_input("🔑 Incolla la tua chiave API Gemini:", type="password")
 
     st.divider()
-    st.header("🛠️ Laboratorio Agenti AI")
+    st.header("🛠️️ Laboratorio Agenti AI")
     st.caption("Crea o modifica i personaggi direttamente da qui!")
 
     opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
