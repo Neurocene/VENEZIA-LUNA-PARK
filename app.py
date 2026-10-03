@@ -3,6 +3,7 @@ import os
 import base64
 import streamlit as st
 import engine
+from google import genai
 
 # ---------------------------------------------------------
 # 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
@@ -32,7 +33,7 @@ MAPPA_PERSONAGGI = {
     "santa_croce": {"id": "lizzie", "nome": "Lizzie"}
 }
 
-# CANNOCCHIALE PER TROVARE LE FOTO (.png o .jpg)
+# CANNOCCHIALE PER TROVARE LE FOTO
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -45,7 +46,7 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# CANNOCCHIALE PER TROVARE E LEGGERE I VIDEO (.mp4)
+# CANNOCCHIALE PER TROVARE E LEGGERE I VIDEO
 def trova_video(nome):
     for est in [".mp4", ".MP4"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -80,6 +81,29 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
 def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
+
+# 🧠 FUNZIONE MAGICA PER FAR PARLARE L'AGENTE CON GEMINI
+def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore):
+    try:
+        client = genai.Client(api_key=api_key)
+        
+        istruzioni_sistema = f"""
+        Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
+        Non uscire MAI dal personaggio. Rispondi in italiano in modo immersivo e coerente con la tua biografia.
+        
+        Ecco la tua Biografia e Regole comportamentali:
+        {bio_personaggio}
+        """
+        
+        prompt_completo = f"{istruzioni_sistema}\n\nIl giocatore ti dice: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt_completo,
+        )
+        return response.text
+    except Exception as e:
+        return f"⚠️ Errore nella connessione a Gemini: {e}"
 
 # SFONDO COPERTINA INGRESSO
 def imposta_sfondo_copertina():
@@ -186,14 +210,20 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
 st.divider()
 
 # ---------------------------------------------------------
-# BARRA LATERALE (SIDEBAR)
+# BARRA LATERALE (SIDEBAR) — CASSAFORTE PER LA CHIAVE API
 # ---------------------------------------------------------
 with st.sidebar:
     st.header("🎯 Missione Principale")
     st.write("✉️ **Consegna il messaggio segreto a Lizzie al Lizzie Bar!**")
-    st.write(f"🎟️️ **Pass VIP per entrare:** {len(s['pass_vip_raccolti'])}/3 per sbloccare il Bar!")
+    st.write(f"🎟️ **Pass VIP per entrare:** {len(s['pass_vip_raccolti'])}/3 per sbloccare il Bar!")
     st.divider()
 
+    # LEGGERE LA CHIAVE DALLA CASSAFORTE O DA UN CAMPO TESTO SICURO
+    gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+    if not gemini_key:
+        gemini_key = st.text_input("🔑 Incolla qui la chiave API Gemini:", type="password")
+
+    st.divider()
     st.header("🛠️ Laboratorio Agenti AI")
     opzioni_agenti = list(config['agents'].keys())
     scelta_agente = st.selectbox("Seleziona Agente da Modificare:", opzioni_agenti)
@@ -318,16 +348,15 @@ with tab_gioca:
                     if st.button(f"💾 Salva Foto {ag_nome}", key=f"btn_p_{ag_id_trovato}"):
                         salva_foto_caricata(nuova_img_pers, ag_id_trovato)
 
-            # COLONNA DI DESTRA: CHAT + NUOVO UPLOAD FILE TESTO PER BIO & REGOLE!
+            # COLONNA DI DESTRA: CHAT CON GEMINI + UPLOAD TESTO REGOLE
             with col_destra:
                 st.subheader(f"💬 Chat con l'Agente AI ({ag_nome})")
                 
                 # MOSTRA LA BIO ATTUALE
                 st.info(f"📜 **Comportamento dell'Agente:**\n\n_{ag_dati.get('biography', 'Nessuna biografia.')}_")
                 
-                # 📄 NUOVA FESSURA MAGICA: UPLOAD FILE DI TESTO CON REGOLE E BIO
+                # UPLOAD FILE TESTO CON REGOLE E BIO
                 with st.expander(f"📄 Carica File con Bio e Regole per {ag_nome} (.txt)"):
-                    st.caption("Carica un file di testo (.txt) dal tuo computer con le regole che l'Agente AI deve seguire:")
                     file_txt_caricato = st.file_uploader("Scegli un file .txt:", type=["txt"], key=f"txt_up_{ag_id_trovato}")
                     if st.button(f"💾 SALVA NUOVA BIO E REGOLE", key=f"btn_save_txt_{ag_id_trovato}"):
                         if file_txt_caricato is not None:
@@ -336,8 +365,6 @@ with tab_gioca:
                             salva_configurazione_mondo()
                             st.success(f"🎉 Nuova biografia e regole per '{ag_nome}' caricate con successo!")
                             st.rerun()
-                        else:
-                            st.warning("⚠️ Per favore seleziona prima un file .txt!")
 
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
 
@@ -345,10 +372,19 @@ with tab_gioca:
                 
                 col_btn1, col_btn2 = st.columns(2)
                 
-                if col_btn1.button("💬 Invia Messaggio (+Fiducia)", key=f"send_{ag_id_trovato}", use_container_width=True):
-                    risposta = engine.transaction(s, engine.dialogue, config, ag_id_trovato, 'respect', frase_utente)
-                    st.success(f"{ag_nome}: {risposta}")
-                    st.rerun()
+                if col_btn1.button("💬 Invia Messaggio (Gemini AI)", key=f"send_{ag_id_trovato}", use_container_width=True):
+                    if gemini_key:
+                        with st.spinner(f"🤖 {ag_nome} sta pensando a cosa risponderti..."):
+                            risposta_ai = fai_parlare_agente_gemini(
+                                gemini_key, 
+                                ag_nome, 
+                                ag_dati.get('biography', ''), 
+                                frase_utente
+                            )
+                            s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
+                            st.success(f"{ag_nome}: {risposta_ai}")
+                    else:
+                        st.warning("🔑 Manca la tua API Key Gemini! Inseriscila nella barra laterale a sinistra.")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 CONSEGNA IL MESSAGGIO SEGRETO A LIZZIE!", key="win_lizzie_btn", use_container_width=True):
@@ -364,7 +400,6 @@ with tab_gioca:
                             st.success(f"🎉 {ag_nome}: «Mi piace come parli! Ecco il mio Pass VIP per il Lizzie Bar!» (Totale Pass: {len(s['pass_vip_raccolti'])}/3)")
                         else:
                             st.error(f"❌ {ag_nome}: «Non ti conosco abbastanza per farti entrare al party di Lizzie! Parlami ancora e guadagnati la mia fiducia!»")
-                        st.rerun()
 
 # --- TAB 2: MAPPA & CARICAMENTO FOTO ---
 with tab_mappa:
