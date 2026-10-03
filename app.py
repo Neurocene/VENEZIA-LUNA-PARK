@@ -7,7 +7,7 @@ import engine
 from google import genai
 
 # ---------------------------------------------------------
-# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
+# 1. IL NOSTRO BANCO DA LAVORO LEGO (CONFIGURAZIONE APP)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione Lizzie Bar", layout="wide", page_icon="🎭")
 
@@ -83,39 +83,41 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 CERVELLO GEMINI ULTRA VELOCE (TURBO)
-def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore):
-    try:
-        client = genai.Client(api_key=api_key)
+# 🧠 CERVELLO GEMINI ULTRA VELOCE E RESISTENTE
+def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore, cronologia_chat=[]):
+    client = genai.Client(api_key=api_key)
+    
+    istruzioni_sistema = f"""
+    Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
+    Non uscire MAI dal personaggio. Rispondi in italiano in modo immersivo, breve e diretto (massimo 2-3 frasi).
+    
+    Ecco la tua Biografia e Regole comportamentali:
+    {bio_personaggio}
+    """
+    
+    # Costruiamo il contesto completo con la storia della conversazione
+    testo_cronologia = ""
+    for msg in cronologia_chat[-4:]: # Ricorda gli ultimi 4 messaggi
+        ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
+        testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-        # Chiediamo risposte brevi (massimo 2-3 frasi) per essere velocissimi!
-        istruzioni_sistema = f"""
-        Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
-        Non uscire MAI dal personaggio. Rispondi in modo divertente, diretto e breve (massimo 2 o 3 frasi).
-        
-        Biografia e Regole:
-        {bio_personaggio}
-        """
-        
-        prompt_completo = f"{istruzioni_sistema}\n\nIl giocatore dice: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
-        
-        # Usiamo il modello Turbo super rapido
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt_completo,
-        )
-        return response.text
-    except Exception as e:
-        # Se c'è un ingorgo, proviamo il modello di riserva
-        try:
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model='gemini-1.5-flash',
-                contents=prompt_completo,
-            )
-            return response.text
-        except Exception as err:
-            return "💨 Un attimo di pazienza! L'agente sta arrivando in gondola, riprova tra 2 secondi!"
+    prompt_completo = f"{istruzioni_sistema}\n\nStorico conversazione:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
+    
+    modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
+    
+    for mod in modelli:
+        for t in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=mod,
+                    contents=prompt_completo,
+                )
+                if response.text and response.text.strip():
+                    return response.text.strip()
+            except Exception:
+                time.sleep(1)
+                
+    return f"«Ehi! C'è troppa confusione qui nei canali di Venezia in questo momento... Dimmi pure di nuovo, ti ascolto!»"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -191,7 +193,7 @@ if not st.session_state.video_intro_visto:
     st.stop()
 
 # ---------------------------------------------------------
-# STAZIONE 3: AVVIO MOTORE DEL GIOCO
+# STAZIONE 3: AVVIO MOTORE DEL GIOCO E CRONOLOGIA CHAT
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -201,6 +203,9 @@ engine.timer(s, config)
 
 if "pass_vip_raccolti" not in s:
     s["pass_vip_raccolti"] = []
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = {}
 
 zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
@@ -226,7 +231,7 @@ st.divider()
 # ---------------------------------------------------------
 with st.sidebar:
     st.header("🎯 Missione Principale")
-    st.write("✉️ **Consegna il messaggio segreto a Lizzie al Lizzie Bar!**")
+    st.write("✉️️ **Consegna il messaggio segreto a Lizzie al Lizzie Bar!**")
     st.write(f"🎟️ **Pass VIP per entrare:** {len(s['pass_vip_raccolti'])}/3 per sbloccare il Bar!")
     st.divider()
 
@@ -396,23 +401,41 @@ with tab_gioca:
 
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
 
+                # INIZIALIZZA CRONOLOGIA PER QUESTO PERSONAGGIO
+                if ag_id_trovato not in st.session_state.chat_history:
+                    st.session_state.chat_history[ag_id_trovato] = []
+
+                # MOSTRA I MESSAGGI PRECEDENTI DELLA CHAT
+                for msg in st.session_state.chat_history[ag_id_trovato]:
+                    if msg["role"] == "user":
+                        st.markdown(f"👤 **Tu:** {msg['content']}")
+                    else:
+                        st.markdown(f"🤖 **{ag_nome}:** {msg['content']}")
+
                 frase_utente = st.text_input(f"Scrivi un messaggio a {ag_nome}:", key=f"chat_input_{ag_id_trovato}")
                 
                 col_btn1, col_btn2 = st.columns(2)
                 
                 if col_btn1.button("💬 Invia Messaggio (Gemini AI)", key=f"send_{ag_id_trovato}", use_container_width=True):
-                    if gemini_key:
-                        with st.spinner(f"⚡ {ag_nome} sta rispondendo..."):
-                            risposta_ai = fai_parlare_agente_gemini(
-                                gemini_key, 
-                                ag_nome, 
-                                ag_dati.get('biography', ''), 
-                                frase_utente
-                            )
-                            s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
-                            st.success(f"{ag_nome}: {risposta_ai}")
-                    else:
-                        st.warning("🔑 Manca la tua API Key Gemini! Inseriscila nei Secrets di Streamlit o nella barra laterale.")
+                    if frase_utente.strip():
+                        if gemini_key:
+                            # Aggiungi il messaggio dell'utente alla storia
+                            st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
+                            
+                            with st.spinner(f"⚡ {ag_nome} sta pensando..."):
+                                risposta_ai = fai_parlare_agente_gemini(
+                                    gemini_key, 
+                                    ag_nome, 
+                                    ag_dati.get('biography', ''), 
+                                    frase_utente,
+                                    st.session_state.chat_history[ag_id_trovato]
+                                )
+                                # Aggiungi la risposta dell'AI alla storia
+                                st.session_state.chat_history[ag_id_trovato].append({"role": "assistant", "content": risposta_ai})
+                                s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
+                                st.rerun()
+                        else:
+                            st.warning("🔑 Manca la tua API Key Gemini! Inseriscila nei Secrets di Streamlit o nella barra laterale.")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 CONSEGNA IL MESSAGGIO SEGRETO A LIZZIE!", key="win_lizzie_btn", use_container_width=True):
