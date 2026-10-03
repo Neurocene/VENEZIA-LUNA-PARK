@@ -23,7 +23,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# 📖 CANNOCCHIALE PER LEGGERE LA BIBBIA DEL MONDO (data/bibbia.txt)
+# 📖 LEGGERE LA BIBBIA DEL MONDO
 def carica_bibbia_mondo():
     percorso_bibbia = os.path.join("data", "bibbia.txt")
     if os.path.exists(percorso_bibbia):
@@ -31,7 +31,7 @@ def carica_bibbia_mondo():
             return f.read()
     return "Venezia Luna Park è un parco giochi misterioso. Per accedere al Lizzie Bar servono 3 Pass VIP."
 
-# 📖 CANNOCCHIALE PER LEGGERE IL FILE BIO DI UN PERSONAGGIO (es. data/brago.txt)
+# 📖 LEGGERE IL FILE BIO DI UN PERSONAGGIO (.txt)
 def carica_bio_personaggio(id_personaggio, bio_default=""):
     percorso_bio = os.path.join("data", f"{id_personaggio}.txt")
     if os.path.exists(percorso_bio):
@@ -39,7 +39,7 @@ def carica_bio_personaggio(id_personaggio, bio_default=""):
             return f.read()
     return bio_default
 
-# MAPPA MAGICA DEGLI ABBINAMENTI ZONA -> PERSONAGGIO
+# MAPPA ABBINAMENTI ZONA -> PERSONAGGIO
 MAPPA_PERSONAGGI = {
     "margini": {"id": "brago", "nome": "Brago"},
     "cannaregio": {"id": "rosko", "nome": "Rosko"},
@@ -123,16 +123,16 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     - Se il giocatore dice che sei un programma, prendilo in giro con la tua ironia personale!
     **********************************************************************
     
-    📜 LA BIBBIA DEL MONDO (SAPER COMUNE):
+    📜 LA BIBBIA DEL MONDO:
     {testo_bibbia}
     
-    🎭 LA TUA SCHEDA PERSONALE, IRONIA E REGOLE:
+    🎭 SCHEDA PERSONALE & REGOLE:
     {bio_effettiva}
     
-    🎯 LA TUA MISSIONE NELLE 72 ORE:
+    🎯 MISSIONE NELLE 72 ORE:
     {missione_72h}
     
-    ⚙️ IL TUO MOTORE DECISIONALE:
+    ⚙️ MOTORE DECISIONALE:
     {motore_dec}
     
     📓 DIARIO DELLA PARTITA:
@@ -256,9 +256,12 @@ if "pass_vip_raccolti" not in s:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = {}
 
-# 🛠️ MEMORIA PER APRIRE E CHIUDERE IL LABORATORIO AGENTI
 if "mostra_lab" not in st.session_state:
     st.session_state.mostra_lab = False
+
+# MEMORIA PER L'AGENTE SELEZIONATO NEL LAB
+if "agente_selezionato_lab" not in st.session_state:
+    st.session_state.agente_selezionato_lab = None
 
 zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
@@ -268,7 +271,6 @@ nome_zona = config['zones'][zona_id]['name']
 # ---------------------------------------------------------
 col_btn_lab, col1, col2, col_luogo, col4, col5 = st.columns([1.5, 1, 1, 2, 1, 1])
 
-# 🎭 IL TASTO MAGICO IN ALTO A SINISTRA!
 with col_btn_lab:
     if st.button("🎭 CHARACTER'S LAB", use_container_width=True):
         st.session_state.mostra_lab = not st.session_state.mostra_lab
@@ -287,35 +289,54 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 LABORATORIO AGENTI A SCOMPARSA (A SINISTRA)
+# 🚪 CHARACTER'S LAB (BARRA LATERALE A SCOMPARSA)
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
-        st.header("🛠️ CHARACTER'S LAB")
-        st.caption("Modifica e programma i tuoi Agenti AI!")
+        st.header("🎭 CHARACTER'S LAB")
+        st.caption("Le figurine dei tuoi personaggi e il centro di controllo!")
 
         gemini_key = st.secrets.get("GEMINI_API_KEY", "")
         if not gemini_key:
-            gemini_key = st.text_input("🔑 Incolla la tua chiave API Gemini:", type="password")
+            gemini_key = st.text_input("🔑 Chiave API Gemini:", type="password")
+
+        st.divider()
+        st.subheader("🖼️ I Personaggi del Gioco")
+
+        # 🌟 PARTE 1: LA FILA DI FIGURINE DEI PERSONAGGI
+        for id_agent, info_agent in config['agents'].items():
+            col_fig_foto, col_fig_nome = st.columns([1, 2])
+            with col_fig_foto:
+                mostra_foto(id_agent, "")
+            with col_fig_nome:
+                # Cliccando sul nome del personaggio si seleziona!
+                if st.button(f"👤 {info_agent['name']}", key=f"lab_select_{id_agent}", use_container_width=True):
+                    st.session_state.agente_selezionato_lab = id_agent
+                    st.rerun()
 
         st.divider()
 
-        opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
-        scelta_agente = st.selectbox("Seleziona Agente da Modificare/Crea:", opzioni_agenti)
+        # 🌟 PARTE 2: PULSANTE PER CREARE UN NUOVO AGENTE (SOTTO LE FIGURINE)
+        if st.button("➕ CREA NUOVO AGENTE", use_container_width=True):
+            st.session_state.agente_selezionato_lab = "NUOVO"
+            st.rerun()
 
-        if scelta_agente == "➕ CREA NUOVO AGENTE":
-            st.markdown("#### 🆕 Crea un Nuovo Agente AI")
+        st.divider()
+
+        # 🌟 PARTE 3: LA SCHEDA DI MODIFICA / CREAZIONE
+        sel_ag = st.session_state.agente_selezionato_lab
+
+        if sel_ag == "NUOVO":
+            st.markdown("### 🆕 Crea un Nuovo Agente AI")
             nuovo_id = st.text_input("ID Segreto (es. `marco`):").strip().lower()
-            nuovo_nome = st.text_input("Nome Personaggio (es. `Marco Gondoliere`):")
-            nuova_bio = st.text_area("Biografia e Comportamento:", placeholder="Scrivi qui la storia dell'Agente AI...")
-            
-            n_missione = st.text_area("🎯 Missione nelle 72 ore:", placeholder="Cosa deve fare in 72 ore?")
-            n_motore = st.text_area("⚙️ Motore Decisionale:", placeholder="Come prende le decisioni?")
-            n_diario = st.text_area("📓 Diario della Partita:", placeholder="Cosa è successo finora?")
-            
+            nuovo_nome = st.text_input("Nome Personaggio:")
+            nuova_bio = st.text_area("Biografia & Istruzioni AI:")
+            n_missione = st.text_area("🎯 Missione 72 Ore:")
+            n_motore = st.text_area("⚙️ Motore Decisionale:")
+            n_diario = st.text_area("📓 Diario di Partita:")
             zona_assegnata = st.selectbox("Zona di Venezia:", list(config['zones'].keys()))
 
-            if st.button("✨ CREA E AGGIUNGI AGENTE AL GIOCO"):
+            if st.button("✨ AGGIUNGI AGENTE AL GIOCO"):
                 if nuovo_id and nuovo_nome:
                     config['agents'][nuovo_id] = {
                         "name": nuovo_nome,
@@ -332,43 +353,42 @@ if st.session_state.mostra_lab:
                     with open(os.path.join("data", f"{nuovo_id}.txt"), "w", encoding="utf-8") as f_nuovo:
                         f_nuovo.write(nuova_bio)
                         
-                    st.success(f"🎉 Agente '{nuovo_nome}' creato con successo!")
+                    st.session_state.agente_selezionato_lab = nuovo_id
+                    st.success(f"🎉 Agente '{nuovo_nome}' creato!")
                     st.rerun()
-                else:
-                    st.error("❌ Compila almeno l'ID segreto e il Nome!")
 
-        else:
-            ag_dati = config['agents'][scelta_agente]
-            st.markdown(f"#### ✏️ Modifica {ag_dati['name']}")
+        elif sel_ag in config['agents']:
+            ag_dati = config['agents'][sel_ag]
+            st.markdown(f"### ⚙️ Scheda: {ag_dati['name']}")
             
-            file_txt_caricato = st.file_uploader(f"📄 Carica File .txt per {ag_dati['name']}:", type=["txt"], key=f"side_up_{scelta_agente}")
-            if file_txt_caricato is not None:
-                contenuto_testo = file_txt_caricato.read().decode("utf-8")
-                with open(os.path.join("data", f"{scelta_agente}.txt"), "w", encoding="utf-8") as f_save_u:
+            file_txt = st.file_uploader(f"📄 Carica File .txt per {ag_dati['name']}:", type=["txt"], key=f"lab_up_{sel_ag}")
+            if file_txt is not None:
+                contenuto_testo = file_txt.read().decode("utf-8")
+                with open(os.path.join("data", f"{sel_ag}.txt"), "w", encoding="utf-8") as f_save_u:
                     f_save_u.write(contenuto_testo)
-                config['agents'][scelta_agente]["biography"] = contenuto_testo
+                config['agents'][sel_ag]["biography"] = contenuto_testo
                 salva_configurazione_mondo()
-                st.success(f"🎉 File .txt caricato per {ag_dati['name']}!")
+                st.success(f"🎉 File .txt caricato!")
 
-            bio_attuale = carica_bio_personaggio(scelta_agente, ag_dati.get("biography", ""))
-            bio_modificata = st.text_area("📜 Biografia & Istruzioni AI:", value=bio_attuale, height=120)
+            bio_att = carica_bio_personaggio(sel_ag, ag_dati.get("biography", ""))
+            bio_mod = st.text_area("📜 Biografia & Comportamento:", value=bio_att, height=120)
             
             m_72h = st.text_area("🎯 Missione 72 Ore:", value=ag_dati.get("missione_72h", ""), height=80)
             m_dec = st.text_area("⚙️ Motore Decisionale:", value=ag_dati.get("motore_decisionale", ""), height=80)
-            d_par = st.text_area("📓 Diario di Partita:", value=ag_dati.get("diario_partita", ""), height=80)
+            d_par = st.text_area("📓 Diario di Partita & Storico:", value=ag_dati.get("diario_partita", ""), height=80)
             
-            if st.button("💾 Salva Modifiche Agente"):
-                config['agents'][scelta_agente]["biography"] = bio_modificata
-                config['agents'][scelta_agente]["missione_72h"] = m_72h
-                config['agents'][scelta_agente]["motore_decisionale"] = m_dec
-                config['agents'][scelta_agente]["diario_partita"] = d_par
+            if st.button("💾 SALVA LE MODIFICHE"):
+                config['agents'][sel_ag]["biography"] = bio_mod
+                config['agents'][sel_ag]["missione_72h"] = m_72h
+                config['agents'][sel_ag]["motore_decisionale"] = m_dec
+                config['agents'][sel_ag]["diario_partita"] = d_par
                 
                 salva_configurazione_mondo()
                 
-                with open(os.path.join("data", f"{scelta_agente}.txt"), "w", encoding="utf-8") as f_out_txt:
-                    f_out_txt.write(bio_modificata)
+                with open(os.path.join("data", f"{sel_ag}.txt"), "w", encoding="utf-8") as f_out_txt:
+                    f_out_txt.write(bio_mod)
                     
-                st.success(f"🎉 Modifiche salvate con successo!")
+                st.success(f"🎉 Scheda di '{ag_dati['name']}' aggiornata!")
                 st.rerun()
 
         st.divider()
