@@ -8,7 +8,7 @@ import engine
 from google import genai
 
 # ---------------------------------------------------------
-# 1. CONFIGURAZIONE BASE DEL GIOCO
+# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione 72 Ore", layout="wide", page_icon="🎭")
 
@@ -24,7 +24,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# 📖 CANNOCCHIALE INTELLIGENTE: TROVA IL FILE ANCHE SE HA MAIUSCOLE/MINUSCOLE DIVERSE
+# 📖 CANNOCCHIALE PER LEGGERE LA BIO DENTRO DATA/
 def carica_bio_personaggio(id_personaggio, bio_default=""):
     nomi_da_provare = [
         f"{id_personaggio}.txt",
@@ -47,7 +47,6 @@ def carica_bibbia_mondo():
             return f.read()
     return "Venezia Luna Park è una città viva. Ogni personaggio ha compiti da svolgere nelle 72 ore."
 
-# MAPPA QUARTIERI -> PERSONAGGI
 MAPPA_PERSONAGGI = {
     "margini": {"id": "brago", "nome": "Brago"},
     "cannaregio": {"id": "rosko", "nome": "Rosko"},
@@ -111,7 +110,7 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🎭 IL CERVELLO TEATRALE DELL'AGENTE (RECITAZIONE E NATURALEZZA)
+# 🧠 MOTORE DI RECITAZIONE TEATRALE DI GEMINI
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
@@ -122,14 +121,13 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     diario_p = info_agente.get("diario_partita", "Nessun evento recente.")
 
     istruzioni_sistema = f"""
-    **********************************************************************
-    REGOLA MAGICA DI RECITAZIONE TOTALE (IMMERSIONE AL 100%):
-    - Tu sei {nome_personaggio}. Dimentica completamente di essere un'AI, un robot o un assistente virtuale!
-    - Vivi in carne ed ossa a Venezia Luna Park.
-    - Se il giocatore ti dice che sei un programma al computer, prendilo in giro o trattalo come se fosse matto!
+    ****************------------------------------------------------------
+    REGOLE DI RECITAZIONE TEATRALE (IMMERSIONE AL 100%):
+    - Tu sei l'attore che interpreta {nome_personaggio}. Vivi davvero a Venezia!
+    - Dimentica di essere un'AI, un robot o un assistente virtuale.
     - NON ripetere mai la stessa frase o il saluto iniziale!
-    - Rispondi in modo naturale, umano, ironico e sempre diverso.
-    **********************************************************************
+    - Rispondi sempre in modo spontaneo, dinamico e umano.
+    ****************------------------------------------------------------
     
     ⏰ TEMPO CORRENTE NEL GIOCO: Ora {ora_narrativa} di 72 (Giorno {(ora_narrativa // 24) + 1}).
     
@@ -148,10 +146,10 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     📓 I TUOI RICORDI RECENTI:
     {diario_p}
     
-    REGOLE PER IL DIALOGO:
-    1. Rispondi continuando direttamente la conversazione.
-    2. Rispondi in italiano con frasi brevi e d'impatto (2-3 frasi al massimo).
-    3. Fai muovere la storia chiedendo qualcosa o reagendo a quello che dice il giocatore!
+    REGOLE DI DIALOGO:
+    1. Rispondi continuando il discorso iniziato dal giocatore.
+    2. Rispondi in italiano in modo breve e d'impatto (2-3 frasi al massimo).
+    3. Fai avanzare la storia con una domanda o una reazione.
     """
     
     testo_cronologia = ""
@@ -159,10 +157,11 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione avvenuta finora]:\n{testo_cronologia}\nGiocatore adesso dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitando:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione avvenuta finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitando:"
     
     try:
         client = genai.Client(api_key=api_key)
+        
         modelli_da_provare = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
         
         for mod in modelli_da_provare:
@@ -171,7 +170,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
                     model=mod,
                     contents=prompt_completo,
                     config={
-                        "temperature": 0.95,  # 🌡️ Fantasia al massimo per non ripetersi!
+                        "temperature": 0.95,
                         "top_p": 0.95
                     }
                 )
@@ -185,7 +184,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     except Exception as e_generale:
         st.error(f"⚠️ Errore di connessione API: {e_generale}")
 
-    return f"⚠️ [ERRORE CHIAVE GEMINI] {nome_personaggio} non riesce a sentire la tua voce! Inserisci la Chiave API nel Character's Lab."
+    return f"⚠️ [ERRORE CHIAVE GEMINI] {nome_personaggio} non riesce a sentire la tua voce! Verificare la Chiave API inserita nel Character's Lab."
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -290,7 +289,7 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 CHARACTER'S LAB (PANNELLO DI CONTROLLO)
+# 🚪 CHARACTER'S LAB (A SCOMPARSA SU LA SINISTRA)
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
@@ -369,7 +368,7 @@ if st.session_state.mostra_lab:
                     f_save_u.write(contenuto_testo)
                 config['agents'][sel_ag]["biography"] = contenuto_testo
                 salva_configurazione_mondo()
-                st.success(f"🎉 File salvato in `data/{sel_ag}.txt`!")
+                st.success(f"🎉 File salvato con successo in `data/{sel_ag}.txt`!")
                 st.rerun()
 
             bio_att = carica_bio_personaggio(sel_ag, ag_dati.get("biography", ""))
@@ -390,7 +389,7 @@ if st.session_state.mostra_lab:
                 with open(os.path.join("data", f"{sel_ag}.txt"), "w", encoding="utf-8") as f_out_txt:
                     f_out_txt.write(bio_mod)
                     
-                st.success(f"🎉 Scheda salvata in `data/{sel_ag}.txt` e `world.json`!")
+                st.success(f"🎉 Scheda salvata nel file `data/{sel_ag}.txt` e in `world.json`!")
                 st.rerun()
 
         st.divider()
@@ -529,7 +528,8 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        gemini_key = st.session_state.get("gemini_key_utente", "")
+                        # PRENDIAMO PRIMA LA CHIAVE DAI SECRETS, ALTRIMENTI DA SESSION STATE
+                        gemini_key = st.secrets.get("GEMINI_API_KEY", "") or st.session_state.get("gemini_key_utente", "")
                         
                         if gemini_key:
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
