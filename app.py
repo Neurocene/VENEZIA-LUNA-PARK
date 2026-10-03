@@ -103,7 +103,7 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 MOTORE GEMINI: RICEVE LE BIO MA NON LE MOSTRA SULLO SCHERMO
+# 🧠 MOTORE GEMINI
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
@@ -256,124 +256,133 @@ if "pass_vip_raccolti" not in s:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = {}
 
+# 🛠️ MEMORIA PER APRIRE E CHIUDERE IL LABORATORIO AGENTI
+if "mostra_lab" not in st.session_state:
+    st.session_state.mostra_lab = False
+
 zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
 
-# CRUSCOTTO IN ALTO
-col1, col2, col_luogo, col4, col5 = st.columns([1, 1, 2, 1, 1])
+# ---------------------------------------------------------
+# CRUSCOTTO IN ALTO CON BOTTONE "CHARACTER'S LAB"
+# ---------------------------------------------------------
+col_btn_lab, col1, col2, col_luogo, col4, col5 = st.columns([1.5, 1, 1, 2, 1, 1])
+
+# 🎭 IL TASTO MAGICO IN ALTO A SINISTRA!
+with col_btn_lab:
+    if st.button("🎭 CHARACTER'S LAB", use_container_width=True):
+        st.session_state.mostra_lab = not st.session_state.mostra_lab
+        st.rerun()
+
 col1.metric("⏳ Ora Narrativa", f"{s['hour']}/72")
 col2.metric("⏱ Minuti Reali", f"{int(s['active_seconds'] // 60)}/120")
 
 with col_luogo:
-    st.markdown(f"### 🏰 Posizione Attuale: {nome_zona}")
+    st.markdown(f"### 🏰 Posizione: {nome_zona}")
 
-col4.metric("🎟️ Pass VIP Raccolti", f"{len(s['pass_vip_raccolti'])}/3")
+col4.metric("🎟️ Pass VIP", f"{len(s['pass_vip_raccolti'])}/3")
 
 if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     s['paused'] = not s['paused']
     st.rerun()
 
-st.divider()
-
 # ---------------------------------------------------------
-# BARRA LATERALE (SIDEBAR) — TUTTO IL LABORATORIO AGENTI STA QUI!
+# 🚪 LABORATORIO AGENTI A SCOMPARSA (A SINISTRA)
 # ---------------------------------------------------------
-with st.sidebar:
-    st.header("🎯 Missione Principale")
-    st.write("✉️ **Consegna il messaggio segreto a Lizzie al Lizzie Bar!**")
-    st.write(f"🎟️ **Pass VIP per entrare:** {len(s['pass_vip_raccolti'])}/3 per sbloccare il Bar!")
-    st.divider()
+if st.session_state.mostra_lab:
+    with st.sidebar:
+        st.header("🛠️ CHARACTER'S LAB")
+        st.caption("Modifica e programma i tuoi Agenti AI!")
 
-    gemini_key = st.secrets.get("GEMINI_API_KEY", "")
-    if not gemini_key:
-        gemini_key = st.text_input("🔑 Incolla la tua chiave API Gemini:", type="password")
+        gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+        if not gemini_key:
+            gemini_key = st.text_input("🔑 Incolla la tua chiave API Gemini:", type="password")
 
-    st.divider()
-    st.header("🛠️ Laboratorio Agenti AI")
-    st.caption("Configura e modifica gli Agenti AI qui a sinistra!")
+        st.divider()
 
-    opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
-    scelta_agente = st.selectbox("Seleziona Agente da Modificare/Crea:", opzioni_agenti)
+        opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
+        scelta_agente = st.selectbox("Seleziona Agente da Modificare/Crea:", opzioni_agenti)
 
-    if scelta_agente == "➕ CREA NUOVO AGENTE":
-        st.markdown("#### 🆕 Crea un Nuovo Agente AI")
-        nuovo_id = st.text_input("ID Segreto (es. `marco`):").strip().lower()
-        nuovo_nome = st.text_input("Nome Personaggio (es. `Marco Gondoliere`):")
-        nuova_bio = st.text_area("Biografia e Comportamento:", placeholder="Scrivi qui la storia dell'Agente AI...")
-        
-        n_missione = st.text_area("🎯 Missione nelle 72 ore:", placeholder="Cosa deve fare in 72 ore?")
-        n_motore = st.text_area("⚙️ Motore Decisionale:", placeholder="Come prende le decisioni?")
-        n_diario = st.text_area("📓 Diario della Partita:", placeholder="Cosa è successo finora?")
-        
-        zona_assegnata = st.selectbox("Zona di Venezia:", list(config['zones'].keys()))
+        if scelta_agente == "➕ CREA NUOVO AGENTE":
+            st.markdown("#### 🆕 Crea un Nuovo Agente AI")
+            nuovo_id = st.text_input("ID Segreto (es. `marco`):").strip().lower()
+            nuovo_nome = st.text_input("Nome Personaggio (es. `Marco Gondoliere`):")
+            nuova_bio = st.text_area("Biografia e Comportamento:", placeholder="Scrivi qui la storia dell'Agente AI...")
+            
+            n_missione = st.text_area("🎯 Missione nelle 72 ore:", placeholder="Cosa deve fare in 72 ore?")
+            n_motore = st.text_area("⚙️ Motore Decisionale:", placeholder="Come prende le decisioni?")
+            n_diario = st.text_area("📓 Diario della Partita:", placeholder="Cosa è successo finora?")
+            
+            zona_assegnata = st.selectbox("Zona di Venezia:", list(config['zones'].keys()))
 
-        if st.button("✨ CREA E AGGIUNGI AGENTE AL GIOCO"):
-            if nuovo_id and nuovo_nome:
-                config['agents'][nuovo_id] = {
-                    "name": nuovo_nome,
-                    "biography": nuova_bio,
-                    "location": zona_assegnata,
-                    "missione_72h": n_missione,
-                    "motore_decisionale": n_motore,
-                    "diario_partita": n_diario
-                }
-                if nuovo_id not in s['trust']:
-                    s['trust'][nuovo_id] = 50
+            if st.button("✨ CREA E AGGIUNGI AGENTE AL GIOCO"):
+                if nuovo_id and nuovo_nome:
+                    config['agents'][nuovo_id] = {
+                        "name": nuovo_nome,
+                        "biography": nuova_bio,
+                        "location": zona_assegnata,
+                        "missione_72h": n_missione,
+                        "motore_decisionale": n_motore,
+                        "diario_partita": n_diario
+                    }
+                    if nuovo_id not in s['trust']:
+                        s['trust'][nuovo_id] = 50
+                    salva_configurazione_mondo()
+                    
+                    with open(os.path.join("data", f"{nuovo_id}.txt"), "w", encoding="utf-8") as f_nuovo:
+                        f_nuovo.write(nuova_bio)
+                        
+                    st.success(f"🎉 Agente '{nuovo_nome}' creato con successo!")
+                    st.rerun()
+                else:
+                    st.error("❌ Compila almeno l'ID segreto e il Nome!")
+
+        else:
+            ag_dati = config['agents'][scelta_agente]
+            st.markdown(f"#### ✏️ Modifica {ag_dati['name']}")
+            
+            file_txt_caricato = st.file_uploader(f"📄 Carica File .txt per {ag_dati['name']}:", type=["txt"], key=f"side_up_{scelta_agente}")
+            if file_txt_caricato is not None:
+                contenuto_testo = file_txt_caricato.read().decode("utf-8")
+                with open(os.path.join("data", f"{scelta_agente}.txt"), "w", encoding="utf-8") as f_save_u:
+                    f_save_u.write(contenuto_testo)
+                config['agents'][scelta_agente]["biography"] = contenuto_testo
+                salva_configurazione_mondo()
+                st.success(f"🎉 File .txt caricato per {ag_dati['name']}!")
+
+            bio_attuale = carica_bio_personaggio(scelta_agente, ag_dati.get("biography", ""))
+            bio_modificata = st.text_area("📜 Biografia & Istruzioni AI:", value=bio_attuale, height=120)
+            
+            m_72h = st.text_area("🎯 Missione 72 Ore:", value=ag_dati.get("missione_72h", ""), height=80)
+            m_dec = st.text_area("⚙️ Motore Decisionale:", value=ag_dati.get("motore_decisionale", ""), height=80)
+            d_par = st.text_area("📓 Diario di Partita:", value=ag_dati.get("diario_partita", ""), height=80)
+            
+            if st.button("💾 Salva Modifiche Agente"):
+                config['agents'][scelta_agente]["biography"] = bio_modificata
+                config['agents'][scelta_agente]["missione_72h"] = m_72h
+                config['agents'][scelta_agente]["motore_decisionale"] = m_dec
+                config['agents'][scelta_agente]["diario_partita"] = d_par
+                
                 salva_configurazione_mondo()
                 
-                with open(os.path.join("data", f"{nuovo_id}.txt"), "w", encoding="utf-8") as f_nuovo:
-                    f_nuovo.write(nuova_bio)
+                with open(os.path.join("data", f"{scelta_agente}.txt"), "w", encoding="utf-8") as f_out_txt:
+                    f_out_txt.write(bio_modificata)
                     
-                st.success(f"🎉 Agente '{nuovo_nome}' creato con successo!")
+                st.success(f"🎉 Modifiche salvate con successo!")
                 st.rerun()
-            else:
-                st.error("❌ Compila almeno l'ID segreto e il Nome!")
 
-    else:
-        ag_dati = config['agents'][scelta_agente]
-        st.markdown(f"#### ✏️ Modifica {ag_dati['name']}")
-        
-        file_txt_caricato = st.file_uploader(f"📄 Carica File .txt per {ag_dati['name']}:", type=["txt"], key=f"side_up_{scelta_agente}")
-        if file_txt_caricato is not None:
-            contenuto_testo = file_txt_caricato.read().decode("utf-8")
-            with open(os.path.join("data", f"{scelta_agente}.txt"), "w", encoding="utf-8") as f_save_u:
-                f_save_u.write(contenuto_testo)
-            config['agents'][scelta_agente]["biography"] = contenuto_testo
-            salva_configurazione_mondo()
-            st.success(f"🎉 File .txt caricato per {ag_dati['name']}!")
-
-        bio_attuale = carica_bio_personaggio(scelta_agente, ag_dati.get("biography", ""))
-        bio_modificata = st.text_area("📜 Biografia & Istruzioni AI (Nascosta al giocatore):", value=bio_attuale, height=120)
-        
-        m_72h = st.text_area("🎯 Missione 72 Ore:", value=ag_dati.get("missione_72h", ""), height=80)
-        m_dec = st.text_area("⚙️ Motore Decisionale:", value=ag_dati.get("motore_decisionale", ""), height=80)
-        d_par = st.text_area("📓 Diario di Partita:", value=ag_dati.get("diario_partita", ""), height=80)
-        
-        if st.button("💾 Salva Modifiche Agente"):
-            config['agents'][scelta_agente]["biography"] = bio_modificata
-            config['agents'][scelta_agente]["missione_72h"] = m_72h
-            config['agents'][scelta_agente]["motore_decisionale"] = m_dec
-            config['agents'][scelta_agente]["diario_partita"] = d_par
-            
-            salva_configurazione_mondo()
-            
-            with open(os.path.join("data", f"{scelta_agente}.txt"), "w", encoding="utf-8") as f_out_txt:
-                f_out_txt.write(bio_modificata)
-                
-            st.success(f"🎉 Modifiche salvate con successo!")
+        st.divider()
+        if st.button("❌ Chiudi CHARACTER'S LAB"):
+            st.session_state.mostra_lab = False
             st.rerun()
 
-    st.divider()
-    if st.button("🔒 Esci e torna alla Copertina"):
-        st.session_state.autenticato = False
-        st.session_state.video_intro_visto = False
-        st.rerun()
+st.divider()
 
 # ---------------------------------------------------------
 # INTERFACCIA PRINCIPALE DEL GIOCO
 # ---------------------------------------------------------
 tab_gioca, tab_mappa, tab_personaggi = st.tabs([
-    "🎮 Gioca & Esplora", "🗺️️ Mappa di Venezia", "👤 Diario Personaggi"
+    "🎮 Gioca & Esplora", "🗺️ Mappa di Venezia", "👤 Diario Personaggi"
 ])
 
 # --- TAB 1: GIOCA & ESPLORA ---
@@ -481,7 +490,7 @@ with tab_gioca:
                     if st.button(f"💾 Salva Video Personaggio", key=f"btn_vid_{ag_id_trovato}"):
                         salva_video_caricato(nuovo_vid, ag_id_trovato)
 
-            # COLONNA DI DESTRA: SOLO LA CHAT (SENZA LA BIO!)
+            # COLONNA DI DESTRA: SOLO LA CHAT
             with col_destra:
                 st.subheader(f"💬 Chat con {ag_nome}")
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
@@ -489,7 +498,6 @@ with tab_gioca:
                 if ag_id_trovato not in st.session_state.chat_history:
                     st.session_state.chat_history[ag_id_trovato] = []
 
-                # FINETRA CHAT SUPER PULITA
                 container_chat = st.container(height=380)
                 with container_chat:
                     if not st.session_state.chat_history[ag_id_trovato]:
@@ -506,6 +514,7 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Invia Messaggio", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
+                        gemini_key = st.secrets.get("GEMINI_API_KEY", "")
                         if gemini_key:
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             
@@ -522,7 +531,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.warning("🔑 Manca la tua API Key Gemini!")
+                            st.warning("🔑 Apri il CHARACTER'S LAB in alto a sinistra e incolla la tua chiave API Gemini!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 CONSEGNA IL MESSAGGIO SEGRETO!", key="win_lizzie_btn", use_container_width=True):
