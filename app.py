@@ -23,6 +23,15 @@ def carica_mondo():
 
 config = carica_mondo()
 
+# 📖 CANNOCCHIALE PER LEGGERE LA BIBBIA DEL MONDO DAL FILE txt
+def carica_bibbia_mondo():
+    percorso_bibbia = os.path.join("data", "bibbia.txt")
+    if os.path.exists(percorso_bibbia):
+        with open(percorso_bibbia, "r", encoding="utf-8") as f:
+            return f.read()
+    # Se il file non esiste ancora, usiamo queste regole di base!
+    return "Venezia Luna Park è un mondo di gioco. Per accedere al Lizzie Bar servono 3 Pass VIP."
+
 # MAPPA MAGICA DEGLI ABBINAMENTI ZONA -> PERSONAGGIO
 MAPPA_PERSONAGGI = {
     "margini": {"id": "brago", "nome": "Brago"},
@@ -34,7 +43,6 @@ MAPPA_PERSONAGGI = {
     "santa_croce": {"id": "lizzie", "nome": "Lizzie"}
 }
 
-# CANNOCCHIALE PER TROVARE LE FOTO (.png o .jpg)
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -47,7 +55,6 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# CANNOCCHIALE PER TROVARE E LEGGERE I VIDEO (.mp4)
 def trova_video(nome):
     for est in [".mp4", ".MP4"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -68,7 +75,6 @@ def riproduci_video(nome):
             return False
     return False
 
-# SALVA FOTO CARICATA
 def salva_foto_caricata(file_caricato, nome_destinazione):
     if file_caricato:
         est = file_caricato.name.split(".")[-1].lower()
@@ -78,25 +84,32 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         st.success(f"🎉 Immagine per '{nome_destinazione}' salvata con successo!")
         st.rerun()
 
-# SALVA CONFIGURAZIONE DEL MONDO NEL FILE JSON
 def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 CERVELLO GEMINI SUPER CREATIVO E CON MEMORIA DI CHAT
+# 🧠 CERVELLO GEMINI: LEGGE LA BIBBIA DAL FILE DATA/BIBBIA.TXT
 def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
+    # Leggiamo la Bibbia dal file!
+    testo_bibbia = carica_bibbia_mondo()
+    
     istruzioni_sistema = f"""
     Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
-    Non usare MAI risposte generiche o ripetitive. Sii reattivo, naturale e vario nelle risposte!
-    Rispondi in italiano rimanendo sempre nel personaggio. Tieni la risposta breve e d'impatto (2-3 frasi massimo).
     
-    Biografia e Personalità:
+    📜 LA BIBBIA DEL MONDO (SAPER COMUNE DI TUTTI I PERSONAGGI):
+    {testo_bibbia}
+    
+    REGOLE DI RECITAZIONE:
+    1. Vivi dentro il mondo descritto nella Bibbia qui sopra. Usa queste informazioni se servono durante la conversazione!
+    2. Mantieni SEMPRE la tua personalità speciale descritta nella tua Biografia Personale.
+    3. Rispondi in italiano in modo breve, naturale e mai ripetitivo (2-3 frasi massimo).
+    
+    La tua Biografia Personale:
     {bio_personaggio}
     """
     
-    # Costruiamo il contesto della conversazione per dargli memoria vera!
     testo_cronologia = ""
     for msg in cronologia_chat[-6:]:
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
@@ -104,7 +117,6 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messag
         
     prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione precedente]:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
     
-    # Tentiamo l'invio con i modelli più stabili
     modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
     
     for mod in modelli:
@@ -121,7 +133,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messag
             except Exception:
                 time.sleep(1)
                 
-    return f"Ah, ciao Luigi! Sto ascoltando... dimmi pure cosa vuoi chiedermi su Lizzie!"
+    return f"«Ehi! Stavo pensando alle regole del Luna Park... Dimmi pure, cosa volevi chiedermi?»"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -244,7 +256,7 @@ with st.sidebar:
         gemini_key = st.text_input("🔑 Incolla la tua chiave API Gemini:", type="password")
 
     st.divider()
-    st.header("🛠️ Laboratorio Agenti AI")
+    st.header("🛠️️ Laboratorio Agenti AI")
     st.caption("Crea o modifica i personaggi direttamente da qui!")
 
     opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
@@ -398,18 +410,16 @@ with tab_gioca:
                     if st.button(f"💾 SALVA NUOVA BIO E REGOLE", key=f"btn_save_txt_{ag_id_trovato}"):
                         if file_txt_caricato is not None:
                             contenuto_testo = file_txt_caricato.read().decode("utf-8")
-                            config['agents'][ag_id_trovato]["biography"] = contenu_testo
+                            config['agents'][ag_id_trovato]["biography"] = contenuto_testo
                             salva_configurazione_mondo()
                             st.success(f"🎉 Nuova biografia e regole per '{ag_nome}' caricate con successo!")
                             st.rerun()
 
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
 
-                # INIZIALIZZA LA MEMORIA PER QUESTO PERSONAGGIO
                 if ag_id_trovato not in st.session_state.chat_history:
                     st.session_state.chat_history[ag_id_trovato] = []
 
-                # CONTENITORE DEI FUMETTI DI CHAT
                 container_chat = st.container(height=300)
                 with container_chat:
                     if not st.session_state.chat_history[ag_id_trovato]:
@@ -427,10 +437,9 @@ with tab_gioca:
                 if col_btn1.button("💬 Invia Messaggio (Gemini AI)", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
                         if gemini_key:
-                            # Salva il messaggio dell'utente nella memoria
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             
-                            with st.spinner(f"⚡ {ag_nome} sta pensando a cosa risponderti..."):
+                            with st.spinner(f"⚡ {ag_nome} sta pensando..."):
                                 risposta_ai = fai_parlare_agente_gemini(
                                     gemini_key, 
                                     ag_nome, 
@@ -438,7 +447,6 @@ with tab_gioca:
                                     frase_utente,
                                     st.session_state.chat_history[ag_id_trovato]
                                 )
-                                # Salva la risposta dell'AI nella memoria
                                 st.session_state.chat_history[ag_id_trovato].append({"role": "assistant", "content": risposta_ai})
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
@@ -462,7 +470,7 @@ with tab_gioca:
 
 # --- TAB 2: MAPPA & CARICAMENTO FOTO ---
 with tab_mappa:
-    st.subheader("🗺️️ Mappa Geografica di Venezia")
+    st.subheader("🗺️ Mappa Geografica di Venezia")
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     with st.expander("📸 Carica o cambia l'Immagine della Mappa"):
         nuova_foto_mappa_tab = st.file_uploader("Scegli immagine per la Mappa:", type=["png", "jpg", "jpeg"], key="up_map_tab")
