@@ -7,7 +7,7 @@ import engine
 from google import genai
 
 # ---------------------------------------------------------
-# 1. IL NOSTRO BANCO DA LAVORO LEGO (CONFIGURAZIONE APP)
+# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione Lizzie Bar", layout="wide", page_icon="🎭")
 
@@ -83,36 +83,39 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 CERVELLO GEMINI GRATUITO E SUPER RESISTENTE
+# 🧠 CERVELLO GEMINI ULTRA VELOCE (TURBO)
 def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore):
-    client = genai.Client(api_key=api_key)
-    
-    istruzioni_sistema = f"""
-    Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
-    Non uscire MAI dal personaggio. Rispondi in italiano in modo immersivo e coerente con la tua biografia.
-    
-    Ecco la tua Biografia e Regole comportamentali:
-    {bio_personaggio}
-    """
-    
-    prompt_completo = f"{istruzioni_sistema}\n\nIl giocatore ti dice: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
-    
-    # Prova i modelli gratuiti e super veloci
-    modelli_da_provare = ['gemini-1.5-flash', 'gemini-1.5-pro']
-    
-    for modello in modelli_da_provare:
-        for tentativo in range(3):
-            try:
-                response = client.models.generate_content(
-                    model=modello,
-                    contents=prompt_completo,
-                )
-                if response.text:
-                    return response.text
-            except Exception as e:
-                time.sleep(2)
-                
-    return "😴 In questo momento le linee di comunicazione di Venezia sono intasate! Fai un respiro e riprova tra 5 secondi."
+    try:
+        client = genai.Client(api_key=api_key)
+        
+        # Chiediamo risposte brevi (massimo 2-3 frasi) per essere velocissimi!
+        istruzioni_sistema = f"""
+        Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
+        Non uscire MAI dal personaggio. Rispondi in modo divertente, diretto e breve (massimo 2 o 3 frasi).
+        
+        Biografia e Regole:
+        {bio_personaggio}
+        """
+        
+        prompt_completo = f"{istruzioni_sistema}\n\nIl giocatore dice: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
+        
+        # Usiamo il modello Turbo super rapido
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt_completo,
+        )
+        return response.text
+    except Exception as e:
+        # Se c'è un ingorgo, proviamo il modello di riserva
+        try:
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents=prompt_completo,
+            )
+            return response.text
+        except Exception as err:
+            return "💨 Un attimo di pazienza! L'agente sta arrivando in gondola, riprova tra 2 secondi!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -232,7 +235,7 @@ with st.sidebar:
         gemini_key = st.text_input("🔑 Incolla la tua chiave API Gemini:", type="password")
 
     st.divider()
-    st.header("🛠️️ Laboratorio Agenti AI")
+    st.header("🛠️ Laboratorio Agenti AI")
     st.caption("Crea o modifica i personaggi direttamente da qui!")
 
     opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
@@ -399,7 +402,7 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Invia Messaggio (Gemini AI)", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if gemini_key:
-                        with st.spinner(f"🤖 {ag_nome} sta pensando a cosa risponderti..."):
+                        with st.spinner(f"⚡ {ag_nome} sta rispondendo..."):
                             risposta_ai = fai_parlare_agente_gemini(
                                 gemini_key, 
                                 ag_nome, 
