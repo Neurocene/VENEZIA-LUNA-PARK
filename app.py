@@ -23,7 +23,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# 📖 LEGGERE LA BIBBIA DEL MONDO
+# 📖 LEGGERE LA BIBBIA DEL MONDO (data/bibbia.txt)
 def carica_bibbia_mondo():
     percorso_bibbia = os.path.join("data", "bibbia.txt")
     if os.path.exists(percorso_bibbia):
@@ -103,7 +103,7 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 MOTORE GEMINI
+# 🧠 MOTORE GEMINI: LEGGE LA BIBBIA E LA BIO PRIMA DI RISPONDERE!
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
@@ -123,16 +123,16 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     - Se il giocatore dice che sei un programma, prendilo in giro con la tua ironia personale!
     **********************************************************************
     
-    📜 LA BIBBIA DEL MONDO:
+    📜 LA BIBBIA DEL MONDO (SAPER COMUNE DI TUTTI I PERSONAGGI):
     {testo_bibbia}
     
-    🎭 SCHEDA PERSONALE & REGOLE:
+    🎭 LA TUA SCHEDA PERSONALE, IRONIA E REGOLE:
     {bio_effettiva}
     
-    🎯 MISSIONE NELLE 72 ORE:
+    🎯 LA TUA MISSIONE NELLE 72 ORE:
     {missione_72h}
     
-    ⚙️ MOTORE DECISIONALE:
+    ⚙️ IL TUO MOTORE DECISIONALE:
     {motore_dec}
     
     📓 DIARIO DELLA PARTITA:
@@ -259,7 +259,6 @@ if "chat_history" not in st.session_state:
 if "mostra_lab" not in st.session_state:
     st.session_state.mostra_lab = False
 
-# MEMORIA PER L'AGENTE SELEZIONATO NEL LAB
 if "agente_selezionato_lab" not in st.session_state:
     st.session_state.agente_selezionato_lab = None
 
@@ -301,29 +300,28 @@ if st.session_state.mostra_lab:
             gemini_key = st.text_input("🔑 Chiave API Gemini:", type="password")
 
         st.divider()
-        st.subheader("🖼️ I Personaggi del Gioco")
+        st.subheader("🖼️ I Personaggi in Fila")
 
-        # 🌟 PARTE 1: LA FILA DI FIGURINE DEI PERSONAGGI
+        # 🌟 1. LA FILA DELLE FIGURINE DEI PERSONAGGI
         for id_agent, info_agent in config['agents'].items():
             col_fig_foto, col_fig_nome = st.columns([1, 2])
             with col_fig_foto:
                 mostra_foto(id_agent, "")
             with col_fig_nome:
-                # Cliccando sul nome del personaggio si seleziona!
                 if st.button(f"👤 {info_agent['name']}", key=f"lab_select_{id_agent}", use_container_width=True):
                     st.session_state.agente_selezionato_lab = id_agent
                     st.rerun()
 
         st.divider()
 
-        # 🌟 PARTE 2: PULSANTE PER CREARE UN NUOVO AGENTE (SOTTO LE FIGURINE)
+        # 🌟 2. TASTO PER CREARE UN NUOVO AGENTE SOTTO LE FIGURINE
         if st.button("➕ CREA NUOVO AGENTE", use_container_width=True):
             st.session_state.agente_selezionato_lab = "NUOVO"
             st.rerun()
 
         st.divider()
 
-        # 🌟 PARTE 3: LA SCHEDA DI MODIFICA / CREAZIONE
+        # 🌟 3. SCHEDA DI MODIFICA O CREAZIONE
         sel_ag = st.session_state.agente_selezionato_lab
 
         if sel_ag == "NUOVO":
@@ -332,7 +330,7 @@ if st.session_state.mostra_lab:
             nuovo_nome = st.text_input("Nome Personaggio:")
             nuova_bio = st.text_area("Biografia & Istruzioni AI:")
             n_missione = st.text_area("🎯 Missione 72 Ore:")
-            n_motore = st.text_area("⚙️ Motore Decisionale:")
+            n_motore = st.text_area("⚙️️ Motore Decisionale:")
             n_diario = st.text_area("📓 Diario di Partita:")
             zona_assegnata = st.selectbox("Zona di Venezia:", list(config['zones'].keys()))
 
@@ -479,13 +477,12 @@ with tab_gioca:
             # NOME PULITO DEL PERSONAGGIO
             st.markdown(f"# 👤 {ag_nome}")
             
-            # COLONNA DI SINISTRA: FOTO PERSONAGGIO + FOTO LOCATION + VIDEO
             col_sinistra, col_destra = st.columns([1, 2])
 
             with col_sinistra:
                 col_img1, col_img2 = st.columns(2)
                 with col_img1:
-                    st.caption("🖼️ Personaggio")
+                    st.caption("🖼️️ Personaggio")
                     mostra_foto(ag_id_trovato, ag_nome)
                 with col_img2:
                     st.caption(f"🏰 Location: {nome_zona}")
@@ -494,7 +491,7 @@ with tab_gioca:
                 st.markdown("#### 🎬 Video")
                 video_trovato = riproduci_video(f"{ag_id_trovato}_video")
                 if not video_trovato:
-                    st.caption(f"ℹ️ Nessun video trovato.")
+                    st.caption(f"ℹ️️ Nessun video trovato.")
 
                 st.markdown("---")
                 with st.expander(f"📸 / 🎬 Carica Foto e Video per {ag_nome}"):
@@ -510,7 +507,6 @@ with tab_gioca:
                     if st.button(f"💾 Salva Video Personaggio", key=f"btn_vid_{ag_id_trovato}"):
                         salva_video_caricato(nuovo_vid, ag_id_trovato)
 
-            # COLONNA DI DESTRA: SOLO LA CHAT
             with col_destra:
                 st.subheader(f"💬 Chat con {ag_nome}")
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
