@@ -83,41 +83,45 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 CERVELLO GEMINI SUPER INTELLIGENTE CON MEMORIA
+# 🧠 CERVELLO GEMINI SUPER CREATIVO E CON MEMORIA DI CHAT
 def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
     istruzioni_sistema = f"""
     Sei l'attore che interpreta {nome_personaggio} nel gioco 'Venezia Luna Park'.
-    NON ripetere mai le stesse frasi già dette prima! Sii vario, creativo e reattivo.
-    Rispondi sempre in modo immersivo e coerente con la tua biografia, mantenendo la risposta breve (massimo 2-3 frasi).
+    Non usare MAI risposte generiche o ripetitive. Sii reattivo, naturale e vario nelle risposte!
+    Rispondi in italiano rimanendo sempre nel personaggio. Tieni la risposta breve e d'impatto (2-3 frasi massimo).
     
-    Biografia e Regole comportamentali:
+    Biografia e Personalità:
     {bio_personaggio}
     """
     
-    # Includiamo gli ultimi messaggi per non far finta di niente!
+    # Costruiamo il contesto della conversazione per dargli memoria vera!
     testo_cronologia = ""
     for msg in cronologia_chat[-6:]:
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\nStorico della chat:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione precedente]:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
     
+    # Tentiamo l'invio con i modelli più stabili
     modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
     
     for mod in modelli:
-        try:
-            response = client.models.generate_content(
-                model=mod,
-                contents=prompt_completo,
-            )
-            if response.text and response.text.strip():
-                return response.text.strip()
-        except Exception:
-            time.sleep(1)
-            
-    return f"«Ehi! Mi sono distratto un attimo tra le calli... Rispiegami cosa dicevi!»"
+        for t in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=mod,
+                    contents=prompt_completo,
+                )
+                if response and hasattr(response, 'text') and response.text:
+                    testo_pulito = response.text.strip()
+                    if testo_pulito:
+                        return testo_pulito
+            except Exception:
+                time.sleep(1)
+                
+    return f"Ah, ciao Luigi! Sto ascoltando... dimmi pure cosa vuoi chiedermi su Lizzie!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -394,18 +398,18 @@ with tab_gioca:
                     if st.button(f"💾 SALVA NUOVA BIO E REGOLE", key=f"btn_save_txt_{ag_id_trovato}"):
                         if file_txt_caricato is not None:
                             contenuto_testo = file_txt_caricato.read().decode("utf-8")
-                            config['agents'][ag_id_trovato]["biography"] = contenuto_testo
+                            config['agents'][ag_id_trovato]["biography"] = contenu_testo
                             salva_configurazione_mondo()
                             st.success(f"🎉 Nuova biografia e regole per '{ag_nome}' caricate con successo!")
                             st.rerun()
 
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
 
-                # PREPARIAMO LA MEMORIA PER QUESTO PERSONAGGIO
+                # INIZIALIZZA LA MEMORIA PER QUESTO PERSONAGGIO
                 if ag_id_trovato not in st.session_state.chat_history:
                     st.session_state.chat_history[ag_id_trovato] = []
 
-                # MOSTRA I FUMETTI DELLA CONVERSAZIONE
+                # CONTENITORE DEI FUMETTI DI CHAT
                 container_chat = st.container(height=300)
                 with container_chat:
                     if not st.session_state.chat_history[ag_id_trovato]:
@@ -423,10 +427,10 @@ with tab_gioca:
                 if col_btn1.button("💬 Invia Messaggio (Gemini AI)", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
                         if gemini_key:
-                            # 1. Salva la tua frase nel taccuino
+                            # Salva il messaggio dell'utente nella memoria
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             
-                            with st.spinner(f"⚡ {ag_nome} sta riflettendo..."):
+                            with st.spinner(f"⚡ {ag_nome} sta pensando a cosa risponderti..."):
                                 risposta_ai = fai_parlare_agente_gemini(
                                     gemini_key, 
                                     ag_nome, 
@@ -434,7 +438,7 @@ with tab_gioca:
                                     frase_utente,
                                     st.session_state.chat_history[ag_id_trovato]
                                 )
-                                # 2. Salva la risposta di Rosko nel taccuino
+                                # Salva la risposta dell'AI nella memoria
                                 st.session_state.chat_history[ag_id_trovato].append({"role": "assistant", "content": risposta_ai})
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
@@ -448,7 +452,7 @@ with tab_gioca:
                 else:
                     if col_btn2.button("🎟️ Chiedi Pass VIP per il Lizzie Bar", key=f"pass_{ag_id_trovato}", use_container_width=True):
                         if ag_id_trovato in s["pass_vip_raccolti"]:
-                            st.info(f"🎟️️ Hai già ottenuto il Pass VIP da {ag_nome}!")
+                            st.info(f"🎟️ Hai già ottenuto il Pass VIP da {ag_nome}!")
                         elif s['trust'].get(ag_id_trovato, 50) >= 50:
                             s["pass_vip_raccolti"].append(ag_id_trovato)
                             st.balloons()
