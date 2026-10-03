@@ -1,2 +1,2 @@
-streamlit==1.64.0
-graphviz==0.21
+streamlit
+google-genai
