@@ -23,12 +23,19 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# 📖 LEGGERE LA BIO DAL CASSETTO DATA/
+# 📖 LEGGERE LA BIO DAI FILE IN DATA/ (FLESSIBILE PER MAIUSCOLE/MINUSCOLE)
 def carica_bio_personaggio(id_personaggio, bio_default=""):
-    percorso_bio = os.path.join("data", f"{id_personaggio}.txt")
-    if os.path.exists(percorso_bio):
-        with open(percorso_bio, "r", encoding="utf-8") as f:
-            return f.read()
+    nomi_da_provare = [
+        f"{id_personaggio}.txt",
+        f"{id_personaggio.lower()}.txt",
+        f"{id_personaggio.upper()}.txt",
+        f"{id_personaggio.capitalize()}.txt"
+    ]
+    for nome_f in nomi_da_provare:
+        percorso_bio = os.path.join("data", nome_f)
+        if os.path.exists(percorso_bio):
+            with open(percorso_bio, "r", encoding="utf-8") as f:
+                return f.read()
     return bio_default
 
 # 📖 LEGGERE LA BIBBIA DEL MONDO (data/bibbia.txt)
@@ -99,11 +106,12 @@ def salva_video_caricato(file_caricato, nome_destinazione):
         st.success(f"🎉 Video salvato in assets!")
         st.rerun()
 
+# SALVA SEMPRE IL FILE JSON CON IL MONDO AGGIORNATO!
 def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 MOTORE AI DINAMICO (ADATTATO ALL'ORA DEL GIOCO)
+# 🧠 MOTORE AI GEMINI
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
@@ -127,13 +135,13 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     📜 BIBBIA DEL MONDO (SAPER COMUNE):
     {testo_bibbia}
     
-    🎭 CHI SEI TU & PERSONALITÀ (DALLA BIO IN DATA/):
+    🎭 CHI SEI TU & TUA SCHEDA PERSONALE (DAL TUO FILE IN DATA/):
     {bio_effettiva}
     
     🎯 IL TUO PIANO PER LE 72 ORE:
     {missione_72h}
     
-    ⚙️️ MOTORE DELLE TUE DECISIONI:
+    ⚙️ MOTORE DELLE TUE DECISIONI:
     {motore_dec}
     
     📓 DIARIO DELLE TUE AZIONI FINORA:
@@ -141,7 +149,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     
     REGOLE DI INTERAZIONE CON IL GIOCATORE:
     1. Tieni conto dell'ora attuale ({ora_narrativa}/72). Chiedi aiuto al giocatore in base a quello di cui hai bisogno PROPRIO IN QUESTO MOMENTO!
-    2. Se il giocatore ti convince o ti aiuta davvero, concedigli il tuo supporto per la serata!
+    2. Comportati rigorosamente secondo le indicazioni della tua scheda personale e della Bibbia del mondo!
     3. Rispondi sempre in italiano, brevemente (2-3 frasi) e con il tuo stile unico.
     """
     
@@ -333,7 +341,6 @@ if st.session_state.mostra_lab:
                         s['trust'][nuovo_id] = 50
                     salva_configurazione_mondo()
                     
-                    # SALVA IL FILE DIRECTLY IN DATA/
                     with open(os.path.join("data", f"{nuovo_id}.txt"), "w", encoding="utf-8") as f_nuovo:
                         f_nuovo.write(nuova_bio)
                         
@@ -348,7 +355,6 @@ if st.session_state.mostra_lab:
             file_txt = st.file_uploader(f"📄 Carica File .txt per {ag_dati['name']}:", type=["txt"], key=f"lab_up_{sel_ag}")
             if file_txt is not None:
                 contenuto_testo = file_txt.read().decode("utf-8")
-                # SALVA AUTOMATICAMENTE IL FILE CARICATO IN DATA/
                 with open(os.path.join("data", f"{sel_ag}.txt"), "w", encoding="utf-8") as f_save_u:
                     f_save_u.write(contenuto_testo)
                 config['agents'][sel_ag]["biography"] = contenuto_testo
@@ -371,11 +377,10 @@ if st.session_state.mostra_lab:
                 
                 salva_configurazione_mondo()
                 
-                # SALVA LE MODIFICHE SCRITTE NEL FILE .TXT IN DATA/
                 with open(os.path.join("data", f"{sel_ag}.txt"), "w", encoding="utf-8") as f_out_txt:
                     f_out_txt.write(bio_mod)
                     
-                st.success(f"🎉 Scheda salvata nel file `data/{sel_ag}.txt`!")
+                st.success(f"🎉 Scheda salvata nel file `data/{sel_ag}.txt` e in `world.json`!")
                 st.rerun()
 
         st.divider()
