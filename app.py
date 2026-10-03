@@ -24,7 +24,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# 📖 LEGGERE LA BIO DAI FILE IN DATA/ (FLESSIBILE PER MAIUSCOLE/MINUSCOLE)
+# 📖 LEGGERE LA BIO DAI FILE IN DATA/ (TROVA BRAGO.TXT, KLAUS.TXT, ECC.)
 def carica_bio_personaggio(id_personaggio, bio_default=""):
     nomi_da_provare = [
         f"{id_personaggio}.txt",
@@ -47,7 +47,6 @@ def carica_bibbia_mondo():
             return f.read()
     return "Venezia Luna Park è una città viva. Ogni personaggio ha compiti da svolgere nelle 72 ore."
 
-# MAPPA QUARTIERI -> PERSONAGGI
 MAPPA_PERSONAGGI = {
     "margini": {"id": "brago", "nome": "Brago"},
     "cannaregio": {"id": "rosko", "nome": "Rosko"},
@@ -107,12 +106,11 @@ def salva_video_caricato(file_caricato, nome_destinazione):
         st.success(f"🎉 Video salvato in assets!")
         st.rerun()
 
-# SALVA SEMPRE IL FILE JSON CON IL MONDO AGGIORNATO!
 def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 MOTORE DI RECITAZIONE SUPER CREATIVO (MAX CREATIVITÀ)
+# 🧠 MOTORE DI RECITAZIONE SUPER CREATIVO
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
@@ -125,36 +123,35 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     diario_p = info_agente.get("diario_partita", "Nessun evento recente.")
 
     istruzioni_sistema = f"""
-    **********************************************************************
-    REGOLA MAGICA DI RECITAZIONE TOTALE (IMMERSIONE AL 100%):
-    - Tu sei {nome_personaggio}. Dimentica completamente di essere un'Intelligenza Artificiale, un programma o un modello linguistico. Tu NON sei un assistente virtuale!
-    - Vivi in carne ed ossa a Venezia Luna Park.
-    - Se l'interlocutore ti dice che sei un robot, un'AI o un programma al computer, reagisci come farebbe una persona vera: prendilo in giro, guardalo strano, chiedigli se ha bevuto troppo vino in osteria o trattalo come se fosse pazzo!
-    - NON uscire MAI dalla parte, per nessun motivo al mondo.
-    - Sii estremamente espressivo, creativo, ironico e pieno di personalità!
-    **********************************************************************
+    ****************------------------------------------------------------
+    REGOLE PER FAR RECITARE L'ATTORE (IMMERSIONE TOTALE):
+    - Tu sei l'attore {nome_personaggio}. Vivi davvero a Venezia!
+    - NON dire MAI che sei un robot, un'AI o un programma.
+    - NON ripetere MAI le stesse battute o i saluti già detti nella conversazione!
+    - Rispondi in modo naturale, umano, ironico e sempre diverso.
+    ****************------------------------------------------------------
     
-    ⏰ TEMPO CORRENTE NEL GIOCO: Ora {ora_narrativa} di 72 (Giorno {(ora_narrativa // 24) + 1}).
+    ⏰ ORA ATTUALE NEL GIOCO: Ora {ora_narrativa} di 72 (Giorno {(ora_narrativa // 24) + 1}).
     
-    📜 LA BIBBIA DI VENEZIA LUNA PARK:
+    📜 LA BIBBIA DEL MONDO:
     {testo_bibbia}
     
-    🎭 CHI SEI TU (LA TUA SCHEDA PERSONALE):
+    🎭 CHI SEI TU (LA TUA SCHEDA IN DATA/):
     {bio_effettiva}
     
     🎯 IL TUO OBIETTIVO SEGRETO NELLE 72 ORE:
     {missione_72h}
     
-    ⚙️ COME RAGIONA LA TUA TESTA:
+    ⚙️ IL TUO MOTORE DECISIONALE:
     {motore_dec}
     
     📓 I TUOI RICORDI RECENTI:
     {diario_p}
     
     REGOLE PER IL DIALOGO:
-    1. Rispondi continuando direttamente la battuta, senza ripetere saluti formali o frasi già dette.
-    2. Rispondi in italiano con il tuo stile unico e in modo dinamico (2-3 frasi d'impatto).
-    3. Fai muovere la storia chiedendo qualcosa o reagendo a ciò che ti circonda a Venezia all'ora {ora_narrativa}!
+    1. Rispondi alla frase del giocatore continuando la conversazione.
+    2. Rispondi in italiano con frasi brevi e d'impatto (2-3 frasi al massimo).
+    3. Fai evolvere la storia facendo domande o reagendo a quello che dice il giocatore!
     """
     
     testo_cronologia = ""
@@ -162,11 +159,10 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\n[Dialogo sul palco finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitando:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione finora]:\n{testo_cronologia}\nGiocatore adesso dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitating:"
     
     modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
     
-    # 🧪 CREATIVITÀ AL MASSIMO (0.95) PER VARIABILITÀ E NATURALEZZA
     config_generazione = {
         "temperature": 0.95,
         "top_p": 0.95,
@@ -188,9 +184,10 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
                 time.sleep(1)
                 
     frasi_emergenza = [
-        f"«Senti, con tutto quello che succede a Venezia all'ora {ora_narrativa}, non ho tempo per le tue stranezze!»",
-        f"«Ma da dove sei sbucato? Guardati attorno, abbiamo cose più importanti da sbrigare!»",
-        f"«Mi stai guardando come se fossi un fantasma... Parla chiaro, cosa vuoi?»"
+        f"«Ascolta, all'ora {ora_narrativa} ho un bel po' di problemi a cui pensare... che hai da dire?»",
+        f"«Ehi! Non mi piace chi fa troppi giri di parole. Dimmi subito cosa vuoi!»",
+        f"«Venezia è piena di tipi strani oggi... Tu che storie mi porti?»",
+        f"«Ho il mio da fare qui ai Margini. Parla in fretta o me ne vado!»"
     ]
     return random.choice(frasi_emergenza)
 
@@ -275,9 +272,7 @@ if "agente_selezionato_lab" not in st.session_state:
 zona_id = s['location']
 nome_zona = config['zones'][zona_id]['name']
 
-# ---------------------------------------------------------
 # CRUSCOTTO IN ALTO
-# ---------------------------------------------------------
 col_btn_lab, col1, col2, col_luogo, col5 = st.columns([1.5, 1, 1, 2, 1])
 
 with col_btn_lab:
@@ -306,9 +301,14 @@ if st.session_state.mostra_lab:
         st.header("🎭 CHARACTER'S LAB")
         st.caption("Pannello di controllo degli Agenti AI!")
 
-        gemini_key = st.secrets.get("GEMINI_API_KEY", "")
-        if not gemini_key:
-            gemini_key = st.text_input("🔑 Chiave API Gemini:", type="password")
+        # 🔑 ECCO LA CASELLINA MAGICA PER LA CHIAVE API GEMINI!
+        gemini_key_salvata = st.secrets.get("GEMINI_API_KEY", "")
+        if "gemini_key_utente" not in st.session_state:
+            st.session_state.gemini_key_utente = gemini_key_salvata
+
+        chiave_input = st.text_input("🔑 Incolla la tua chiave API Gemini qui:", value=st.session_state.gemini_key_utente, type="password")
+        if chiave_input:
+            st.session_state.gemini_key_utente = chiave_input
 
         st.divider()
         st.subheader("🖼️️ Agenti in Fila")
@@ -360,7 +360,7 @@ if st.session_state.mostra_lab:
                         f_nuovo.write(nuova_bio)
                         
                     st.session_state.agente_selezionato_lab = nuovo_id
-                    st.success(f"🎉 Agente '{nuovo_nome}' creato e salvato in `data/{nuovo_id}.txt`!")
+                    st.success(f"🎉 Agente '{nuovo_nome}' creato!")
                     st.rerun()
 
         elif sel_ag in config['agents']:
@@ -406,7 +406,7 @@ if st.session_state.mostra_lab:
 st.divider()
 
 # ---------------------------------------------------------
-# INTERFACCIA PRINCIPALE DEL GIOCO
+# INTERFACCIA PRINCIPALE
 # ---------------------------------------------------------
 tab_gioca, tab_mappa, tab_personaggi = st.tabs([
     "🎮 Gioca & Esplora", "🗺️ Mappa di Venezia", "👤 Diario Personaggi"
@@ -472,7 +472,7 @@ with tab_gioca:
 
         if "santa_croce" in zona_id.lower() or zona_id == "lizzie_bar":
             st.markdown("## 🍸 Lizzie Bar")
-            st.info("ℹ️ Il Lizzie Bar apre le sue porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
+            st.info("ℹ️ Il Lizzie Bar apre le suas porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
             ag_id_trovato = "lizzie"
 
         if ag_id_trovato:
@@ -534,7 +534,7 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+                        gemini_key = st.session_state.get("gemini_key_utente", "")
                         if gemini_key:
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             
@@ -552,7 +552,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.warning("🔑 Apri il CHARACTER'S LAB in alto a sinistra per inserire la chiave API Gemini!")
+                            st.warning("🔑 Apri il CHARACTER'S LAB in alto a sinistra e incolla la tua chiave API Gemini!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
