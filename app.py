@@ -24,7 +24,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# 📖 LEGGERE LA BIO DAI FILE IN DATA/ (TROVA BRAGO.TXT, KLAUS.TXT, ECC.)
+# 📖 CANNOCCHIALE PER LEGGERE LA BIO DENTRO DATA/
 def carica_bio_personaggio(id_personaggio, bio_default=""):
     nomi_da_provare = [
         f"{id_personaggio}.txt",
@@ -110,10 +110,8 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 MOTORE DI RECITAZIONE SUPER CREATIVO
+# 🧠 MOTORE DI RECITAZIONE GEMINI (CON CONTROLLO ERRORI PER FARLO SVEGLIARE!)
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
-    client = genai.Client(api_key=api_key)
-    
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
     
@@ -124,34 +122,34 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
 
     istruzioni_sistema = f"""
     ****************------------------------------------------------------
-    REGOLE PER FAR RECITARE L'ATTORE (IMMERSIONE TOTALE):
-    - Tu sei l'attore {nome_personaggio}. Vivi davvero a Venezia!
-    - NON dire MAI che sei un robot, un'AI o un programma.
-    - NON ripetere MAI le stesse battute o i saluti già detti nella conversazione!
-    - Rispondi in modo naturale, umano, ironico e sempre diverso.
+    REGOLE DI RECITAZIONE TEATRALE (IMMERSIONE AL 100%):
+    - Tu sei l'attore che interpreta {nome_personaggio}. Vivi davvero a Venezia!
+    - Dimentica di essere un'AI, un robot o un assistente virtuale.
+    - NON ripetere mai la stessa frase o il saluto iniziale!
+    - Rispondi sempre in modo spontaneo, dinamico e umano.
     ****************------------------------------------------------------
     
-    ⏰ ORA ATTUALE NEL GIOCO: Ora {ora_narrativa} di 72 (Giorno {(ora_narrativa // 24) + 1}).
+    ⏰ TEMPO CORRENTE NEL GIOCO: Ora {ora_narrativa} di 72 (Giorno {(ora_narrativa // 24) + 1}).
     
     📜 LA BIBBIA DEL MONDO:
     {testo_bibbia}
     
-    🎭 CHI SEI TU (LA TUA SCHEDA IN DATA/):
+    🎭 SCHEDA DEL PERSONAGGIO (IN DATA/):
     {bio_effettiva}
     
     🎯 IL TUO OBIETTIVO SEGRETO NELLE 72 ORE:
     {missione_72h}
     
-    ⚙️ IL TUO MOTORE DECISIONALE:
+    ⚙️ MOTORE DECISIONALE:
     {motore_dec}
     
     📓 I TUOI RICORDI RECENTI:
     {diario_p}
     
-    REGOLE PER IL DIALOGO:
-    1. Rispondi alla frase del giocatore continuando la conversazione.
-    2. Rispondi in italiano con frasi brevi e d'impatto (2-3 frasi al massimo).
-    3. Fai evolvere la storia facendo domande o reagendo a quello che dice il giocatore!
+    REGOLE DI DIALOGO:
+    1. Rispondi continuando il discorso iniziato dal giocatore.
+    2. Rispondi in italiano in modo breve e d'impatto (2-3 frasi al massimo).
+    3. Fai avanzare la storia con una domanda o una reazione.
     """
     
     testo_cronologia = ""
@@ -159,37 +157,37 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione finora]:\n{testo_cronologia}\nGiocatore adesso dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitating:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione avvenuta finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitando:"
     
-    modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
-    
-    config_generazione = {
-        "temperature": 0.95,
-        "top_p": 0.95,
-    }
-    
-    for mod in modelli:
-        for t in range(2):
+    try:
+        client = genai.Client(api_key=api_key)
+        
+        # PROVIAMO DIVERSI MODELLI PER VEDERE QUALE RISPONDE PRIMA!
+        modelli_da_provare = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+        
+        for mod in modelli_da_provare:
             try:
                 response = client.models.generate_content(
                     model=mod,
                     contents=prompt_completo,
-                    config=config_generazione
+                    config={
+                        "temperature": 0.9,
+                        "top_p": 0.95
+                    }
                 )
                 if response and hasattr(response, 'text') and response.text:
                     testo_pulito = response.text.strip()
                     if testo_pulito:
                         return testo_pulito
-            except Exception:
-                time.sleep(1)
-                
-    frasi_emergenza = [
-        f"«Ascolta, all'ora {ora_narrativa} ho un bel po' di problemi a cui pensare... che hai da dire?»",
-        f"«Ehi! Non mi piace chi fa troppi giri di parole. Dimmi subito cosa vuoi!»",
-        f"«Venezia è piena di tipi strani oggi... Tu che storie mi porti?»",
-        f"«Ho il mio da fare qui ai Margini. Parla in fretta o me ne vado!»"
-    ]
-    return random.choice(frasi_emergenza)
+            except Exception as err_modello:
+                # Se un modello fallisce, prova il successivo!
+                continue
+
+    except Exception as e_generale:
+        st.error(f"⚠️ Errore di connessione API: {e_generale}")
+
+    # Se la chiave è errata o non risponde, te lo dice chiaramente!
+    return f"⚠️ [ERRORE CHIAVE GEMINI] {nome_personaggio} non riesce a sentire la tua voce! Verificare la Chiave API inserita nel Character's Lab."
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -301,17 +299,17 @@ if st.session_state.mostra_lab:
         st.header("🎭 CHARACTER'S LAB")
         st.caption("Pannello di controllo degli Agenti AI!")
 
-        # 🔑 ECCO LA CASELLINA MAGICA PER LA CHIAVE API GEMINI!
-        gemini_key_salvata = st.secrets.get("GEMINI_API_KEY", "")
+        # CONTROLLIAMO SE LA CHIAVE C'È GIÀ NEI SECRETS
+        gemini_key_secrets = st.secrets.get("GEMINI_API_KEY", "")
         if "gemini_key_utente" not in st.session_state:
-            st.session_state.gemini_key_utente = gemini_key_salvata
+            st.session_state.gemini_key_utente = gemini_key_secrets
 
-        chiave_input = st.text_input("🔑 Incolla la tua chiave API Gemini qui:", value=st.session_state.gemini_key_utente, type="password")
+        chiave_input = st.text_input("🔑 Incolla qui la tua Chiave API Gemini:", value=st.session_state.gemini_key_utente, type="password")
         if chiave_input:
-            st.session_state.gemini_key_utente = chiave_input
+            st.session_state.gemini_key_utente = chiave_input.strip()
 
         st.divider()
-        st.subheader("🖼️️ Agenti in Fila")
+        st.subheader("🖼️ Agenti in Fila")
 
         for id_agent, info_agent in config['agents'].items():
             col_fig_foto, col_fig_nome = st.columns([1, 2])
@@ -472,7 +470,7 @@ with tab_gioca:
 
         if "santa_croce" in zona_id.lower() or zona_id == "lizzie_bar":
             st.markdown("## 🍸 Lizzie Bar")
-            st.info("ℹ️ Il Lizzie Bar apre le suas porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
+            st.info("ℹ️ Il Lizzie Bar apre le sue porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
             ag_id_trovato = "lizzie"
 
         if ag_id_trovato:
@@ -534,7 +532,9 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
+                        # RECUPERIAMO LA CHIAVE API SALVATA IN MEMORIA
                         gemini_key = st.session_state.get("gemini_key_utente", "")
+                        
                         if gemini_key:
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             
@@ -552,7 +552,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.warning("🔑 Apri il CHARACTER'S LAB in alto a sinistra e incolla la tua chiave API Gemini!")
+                            st.error("🔑 Manca la chiave API! Apri il CHARACTER'S LAB in alto a sinistra e incolla la tua Chiave API Gemini.")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
