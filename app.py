@@ -31,7 +31,7 @@ def carica_bibbia_mondo():
             return f.read()
     return "Venezia Luna Park è un parco giochi misterioso. Per accedere al Lizzie Bar servono 3 Pass VIP."
 
-# 📖 CANNOCCHIALE PER LEGGERE IL FILE BIO DI UN PERSONAGGIO (es. data/alberic.txt)
+# 📖 CANNOCCHIALE PER LEGGERE IL FILE BIO DI UN PERSONAGGIO (es. data/brago.txt)
 def carica_bio_personaggio(id_personaggio, bio_default=""):
     percorso_bio = os.path.join("data", f"{id_personaggio}.txt")
     if os.path.exists(percorso_bio):
@@ -88,21 +88,28 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         percorso_finale = os.path.join("assets", f"{nome_destinazione}.{est}")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Immagine per '{nome_destinazione}' salvata con successo!")
+        st.success(f"🎉 Immagine per '{nome_destinazione}' salvata!")
+        st.rerun()
+
+def salva_video_caricato(file_caricato, nome_destinazione):
+    if file_caricato:
+        percorso_finale = os.path.join("assets", f"{nome_destinazione}_video.mp4")
+        with open(percorso_finale, "wb") as f:
+            f.write(file_caricato.getbuffer())
+        st.success(f"🎉 Video per '{nome_destinazione}' salvato!")
         st.rerun()
 
 def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 MOTORE GEMINI CON IMMERSIONE TOTALE ED ISTRUZIONI
+# 🧠 MOTORE GEMINI: RICEVE LE BIO MA NON LE MOSTRA SULLO SCHERMO
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
     
-    # Recuperiamo anche i tre nuovi campi dal file o dallo stato
     info_agente = config['agents'].get(id_personaggio, {})
     missione_72h = info_agente.get("missione_72h", "Nessuna missione impostata.")
     motore_dec = info_agente.get("motore_decisionale", "Agisci secondo la tua personalità.")
@@ -128,13 +135,12 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     ⚙️ IL TUO MOTORE DECISIONALE:
     {motore_dec}
     
-    📓 DIARIO DELLA PARTITA (COSA È SUCCESSO FINORA):
+    📓 DIARIO DELLA PARTITA:
     {diario_p}
     
     REGOLE DI DIALOGO:
     1. Rispondi in italiano con la tua ironia e il tuo stile unico.
-    2. Tieni conto della tua missione delle 72 ore e degli eventi del diario!
-    3. Rispondi in modo breve, teatrale e scattante (2-3 frasi al massimo).
+    2. Rispondi in modo breve, teatrale e scattante (2-3 frasi al massimo).
     """
     
     testo_cronologia = ""
@@ -270,7 +276,7 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
 st.divider()
 
 # ---------------------------------------------------------
-# BARRA LATERALE (SIDEBAR) — LABORATORIO AGENTI COMPLETO
+# BARRA LATERALE (SIDEBAR) — TUTTO IL LABORATORIO AGENTI STA QUI!
 # ---------------------------------------------------------
 with st.sidebar:
     st.header("🎯 Missione Principale")
@@ -327,7 +333,6 @@ with st.sidebar:
         ag_dati = config['agents'][scelta_agente]
         st.markdown(f"#### ✏️ Modifica {ag_dati['name']}")
         
-        # 📄 UPLOAD FILE BIO PER L'AGENTE
         file_txt_caricato = st.file_uploader(f"📄 Carica File .txt per {ag_dati['name']}:", type=["txt"], key=f"side_up_{scelta_agente}")
         if file_txt_caricato is not None:
             contenuto_testo = file_txt_caricato.read().decode("utf-8")
@@ -338,12 +343,11 @@ with st.sidebar:
             st.success(f"🎉 File .txt caricato per {ag_dati['name']}!")
 
         bio_attuale = carica_bio_personaggio(scelta_agente, ag_dati.get("biography", ""))
-        bio_modificata = st.text_area("📜 Biografia & Istruzioni AI:", value=bio_attuale, height=120)
+        bio_modificata = st.text_area("📜 Biografia & Istruzioni AI (Nascosta al giocatore):", value=bio_attuale, height=120)
         
-        # 🎯 LE TRE NUOVE CASELLE RICHIESTE!
-        m_72h = st.text_area("🎯 Missione 72 Ore:", value=ag_dati.get("missione_72h", ""), height=80, placeholder="Es. Comprare il Lizzie Bar entro l'ora 48...")
-        m_dec = st.text_area("⚙️ Motore Decisionale:", value=ag_dati.get("motore_decisionale", ""), height=80, placeholder="Es. Se il giocatore lo insulta, si allea con Marla...")
-        d_par = st.text_area("📓 Diario di Partita:", value=ag_dati.get("diario_partita", ""), height=80, placeholder="Es. Ora 12: Ha parlato con il protagonista...")
+        m_72h = st.text_area("🎯 Missione 72 Ore:", value=ag_dati.get("missione_72h", ""), height=80)
+        m_dec = st.text_area("⚙️ Motore Decisionale:", value=ag_dati.get("motore_decisionale", ""), height=80)
+        d_par = st.text_area("📓 Diario di Partita:", value=ag_dati.get("diario_partita", ""), height=80)
         
         if st.button("💾 Salva Modifiche Agente"):
             config['agents'][scelta_agente]["biography"] = bio_modificata
@@ -369,7 +373,7 @@ with st.sidebar:
 # INTERFACCIA PRINCIPALE DEL GIOCO
 # ---------------------------------------------------------
 tab_gioca, tab_mappa, tab_personaggi = st.tabs([
-    "🎮 Gioca & Esplora", "🗺️ Mappa di Venezia", "👤 Diario Personaggi"
+    "🎮 Gioca & Esplora", "🗺️️ Mappa di Venezia", "👤 Diario Personaggi"
 ])
 
 # --- TAB 1: GIOCA & ESPLORA ---
@@ -430,10 +434,8 @@ with tab_gioca:
         if not ag_id_trovato:
             ag_id_trovato = config['zones'][zona_id].get('owner', 'brago')
 
-        # --- CHAT DIRETTA CON IL PERSONAGGIO (SENZA "STANZA DI:") ---
         if "santa_croce" in zona_id.lower() or zona_id == "lizzie_bar":
             st.markdown("## 🍸 Benvenuto al Lizzie Bar!")
-            
             if len(s["pass_vip_raccolti"]) < 3:
                 st.error(f"🛑 **I BOTTAFUORI TI BLOCCANO L'INGRESSO!**\n\n«Non puoi entrare al Lizzie Bar! Servono almeno 3 Pass VIP. Al momento ne hai solo **{len(s['pass_vip_raccolti'])}/3**!»")
                 st.info("💡 **Consiglio:** Viaggia negli altri quartieri sulla mappa, parla con i personaggi e fatti regalare i loro Pass VIP!")
@@ -445,38 +447,50 @@ with tab_gioca:
             ag_dati = config['agents'][ag_id_trovato]
             ag_nome = ag_dati['name']
 
-            # 🌟 NOME DEL PERSONAGGIO PULITO E GRANDE (SENZA "STANZA DI:")
+            # NOME PULITO DEL PERSONAGGIO
             st.markdown(f"# 👤 {ag_nome}")
             
+            # COLONNA DI SINISTRA: FOTO PERSONAGGIO + FOTO LOCATION + VIDEO
             col_sinistra, col_destra = st.columns([1, 2])
 
             with col_sinistra:
-                st.subheader(f"🖼️️ Ritratto di {ag_nome}")
-                mostra_foto(ag_id_trovato, ag_nome)
+                col_img1, col_img2 = st.columns(2)
+                with col_img1:
+                    st.caption("🖼️ Personaggio")
+                    mostra_foto(ag_id_trovato, ag_nome)
+                with col_img2:
+                    st.caption(f"🏰 Location: {nome_zona}")
+                    mostra_foto(zona_id, nome_zona)
                 
                 st.markdown("#### 🎬 Video")
                 video_trovato = riproduci_video(f"{ag_id_trovato}_video")
                 if not video_trovato:
-                    st.caption(f"ℹ️ Nessun video per `{ag_id_trovato}_video.mp4`.")
+                    st.caption(f"ℹ️ Nessun video trovato.")
 
                 st.markdown("---")
-                with st.expander(f"📸 Cambia Immagine"):
-                    nuova_img_pers = st.file_uploader(f"Foto per {ag_nome}:", type=["png", "jpg", "jpeg"], key=f"up_p_{ag_id_trovato}")
-                    if st.button(f"💾 Salva Foto", key=f"btn_p_{ag_id_trovato}"):
-                        salva_foto_caricata(nuova_img_pers, ag_id_trovato)
+                with st.expander(f"📸 / 🎬 Carica Foto e Video per {ag_nome}"):
+                    nuova_img = st.file_uploader(f"📸 Foto Personaggio:", type=["png", "jpg", "jpeg"], key=f"up_img_{ag_id_trovato}")
+                    if st.button(f"💾 Salva Foto Personaggio", key=f"btn_img_{ag_id_trovato}"):
+                        salva_foto_caricata(nuova_img, ag_id_trovato)
+                        
+                    nuova_loc = st.file_uploader(f"🏰 Foto Location ({nome_zona}):", type=["png", "jpg", "jpeg"], key=f"up_loc_{zona_id}")
+                    if st.button(f"💾 Salva Foto Location", key=f"btn_loc_{zona_id}"):
+                        salva_foto_caricata(nuova_loc, zona_id)
 
+                    nuovo_vid = st.file_uploader(f"🎬 Video Personaggio (.mp4):", type=["mp4"], key=f"up_vid_{ag_id_trovato}")
+                    if st.button(f"💾 Salva Video Personaggio", key=f"btn_vid_{ag_id_trovato}"):
+                        salva_video_caricato(nuovo_vid, ag_id_trovato)
+
+            # COLONNA DI DESTRA: SOLO LA CHAT (SENZA LA BIO!)
             with col_destra:
                 st.subheader(f"💬 Chat con {ag_nome}")
-                
-                bio_per_schermo = carica_bio_personaggio(ag_id_trovato, ag_dati.get('biography', 'Nessuna biografia.'))
-                st.info(f"📜 **Bio & Comportamento:**\n\n_{bio_per_schermo}_")
-
                 st.write(f"**Livello di Fiducia:** {s['trust'].get(ag_id_trovato, 50)}/100")
 
                 if ag_id_trovato not in st.session_state.chat_history:
                     st.session_state.chat_history[ag_id_trovato] = []
 
-                container_chat = st.container(height=300)
+                # FINETRA CHAT SUPER PULITA
+                container_chat = st.container(height=380)
                 with container_chat:
                     if not st.session_state.chat_history[ag_id_trovato]:
                         st.caption(f"💬 Non hai ancora parlato con {ag_nome}. Scrivigli qualcosa!")
