@@ -297,7 +297,7 @@ if st.session_state.mostra_lab:
 
         if "gemini_key_utente" not in st.session_state:
             try:
-                st.session_state.gemini_key_utente = st.secrets.get("GEMINI_API_KEY", "")
+                st.session_state.gemini_key_utente = st.secrets.get("GEMINI_API_KEY", "AQ.Ab8RN6JPtoob4W84Thj05IBT-5WGVaiSvJHv76hinlyJexEZaw")
             except Exception:
                 st.session_state.gemini_key_utente = ""
 
