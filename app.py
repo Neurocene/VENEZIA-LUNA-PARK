@@ -6,7 +6,7 @@ import engine
 from google import genai
 
 # ---------------------------------------------------------
-# 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
+# 1. IL NOSTRO BANCO DA LAVORO LEGO (CONFIGURAZIONE APP)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione Lizzie Bar", layout="wide", page_icon="🎭")
 
@@ -22,7 +22,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# MAPPA DEGLI ABBINAMENTI ZONA -> PERSONAGGIO
+# MAPPA MAGICA DEGLI ABBINAMENTI ZONA -> PERSONAGGIO
 MAPPA_PERSONAGGI = {
     "margini": {"id": "brago", "nome": "Brago"},
     "cannaregio": {"id": "rosko", "nome": "Rosko"},
@@ -33,7 +33,7 @@ MAPPA_PERSONAGGI = {
     "santa_croce": {"id": "lizzie", "nome": "Lizzie"}
 }
 
-# CANNOCCHIALE PER TROVARE LE FOTO
+# CANNOCCHIALE PER TROVARE LE FOTO (.png o .jpg)
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -46,7 +46,7 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
 
-# CANNOCCHIALE PER TROVARE E LEGGERE I VIDEO
+# CANNOCCHIALE PER TROVARE E LEGGERE I VIDEO (.mp4)
 def trova_video(nome):
     for est in [".mp4", ".MP4"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -77,12 +77,12 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         st.success(f"🎉 Immagine per '{nome_destinazione}' salvata con successo!")
         st.rerun()
 
-# SALVA MONDO NEL FILE JSON
+# SALVA CONFIGURAZIONE DEL MONDO NEL FILE JSON
 def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 FUNZIONE MAGICA PER FAR PARLARE L'AGENTE CON GEMINI
+# 🧠 CERVELLO GEMINI PER FAR PARLARE GLI AGENTI AI
 def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messaggio_giocatore):
     try:
         client = genai.Client(api_key=api_key)
@@ -97,15 +97,16 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, bio_personaggio, messag
         
         prompt_completo = f"{istruzioni_sistema}\n\nIl giocatore ti dice: '{messaggio_giocatore}'\nRispondi nei panni di {nome_personaggio}:"
         
+        # 🤖 USIAMO IL NUOVO MODELLO AGGIORNATO GEMINI-3.8-FLASH!
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.8-flash',
             contents=prompt_completo,
         )
         return response.text
     except Exception as e:
         return f"⚠️ Errore nella connessione a Gemini: {e}"
 
-# SFONDO COPERTINA INGRESSO
+# SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
     percorso_copertina = trova_foto("copertina")
     if percorso_copertina:
@@ -142,7 +143,7 @@ def imposta_sfondo_copertina():
         )
 
 # ---------------------------------------------------------
-# STAZIONE 1: PRIMA PAGINA CON PASSWORD
+# STAZIONE 1: INGRESSO CON PASSWORD
 # ---------------------------------------------------------
 if "autenticato" not in st.session_state:
     st.session_state.autenticato = False
@@ -165,7 +166,7 @@ if not st.session_state.autenticato:
     st.stop()
 
 # ---------------------------------------------------------
-# STAZIONE 2: VIDEO INIZIALE DI INTRODUZIONE
+# STAZIONE 2: VIDEO DI INTRODUZIONE
 # ---------------------------------------------------------
 if not st.session_state.video_intro_visto:
     st.markdown("## 🎬 Introduzione a Venezia Luna Park")
@@ -210,7 +211,7 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
 st.divider()
 
 # ---------------------------------------------------------
-# BARRA LATERALE (SIDEBAR) — CASSAFORTE PER LA CHIAVE API
+# BARRA LATERALE (SIDEBAR) — LABORATORIO E CASSAFORTE
 # ---------------------------------------------------------
 with st.sidebar:
     st.header("🎯 Missione Principale")
@@ -218,24 +219,49 @@ with st.sidebar:
     st.write(f"🎟️ **Pass VIP per entrare:** {len(s['pass_vip_raccolti'])}/3 per sbloccare il Bar!")
     st.divider()
 
-    # LEGGERE LA CHIAVE DALLA CASSAFORTE O DA UN CAMPO TESTO SICURO
     gemini_key = st.secrets.get("GEMINI_API_KEY", "")
     if not gemini_key:
-        gemini_key = st.text_input("🔑 Incolla qui la chiave API Gemini:", type="password")
+        gemini_key = st.text_input("🔑 Incolla la tua chiave API Gemini:", type="password")
 
     st.divider()
     st.header("🛠️ Laboratorio Agenti AI")
-    opzioni_agenti = list(config['agents'].keys())
-    scelta_agente = st.selectbox("Seleziona Agente da Modificare:", opzioni_agenti)
-    ag_dati = config['agents'][scelta_agente]
-    
-    st.markdown(f"#### ✏️ Modifica Bio {ag_dati['name']}")
-    bio_modificata = st.text_area("Istruzioni AI:", value=ag_dati.get("biography", ""), height=120)
-    if st.button("💾 Salva Modifiche Agente"):
-        config['agents'][scelta_agente]["biography"] = bio_modificata
-        salva_configurazione_mondo()
-        st.success(f"🎉 Biografia di '{ag_dati['name']}' salvata!")
-        st.rerun()
+    st.caption("Crea o modifica i personaggi direttamente da qui!")
+
+    opzioni_agenti = ["➕ CREA NUOVO AGENTE"] + list(config['agents'].keys())
+    scelta_agente = st.selectbox("Seleziona Agente da Modificare/Creare:", opzioni_agenti)
+
+    if scelta_agente == "➕ CREA NUOVO AGENTE":
+        st.markdown("#### 🆕 Crea un Nuovo Agente AI")
+        nuovo_id = st.text_input("ID Segreto (es. `marco`):").strip().lower()
+        nuovo_nome = st.text_input("Nome Personaggio (es. `Marco Gondoliere`):")
+        nuova_bio = st.text_area("Biografia e Comportamento:", placeholder="Scrivi qui la storia dell'Agente AI...")
+        zona_assegnata = st.selectbox("Zona di Venezia:", list(config['zones'].keys()))
+
+        if st.button("✨ CREA E AGGIUNGI AGENTE AL GIOCO"):
+            if nuovo_id and nuovo_nome:
+                config['agents'][nuovo_id] = {
+                    "name": nuovo_nome,
+                    "biography": nuova_bio,
+                    "location": zona_assegnata
+                }
+                if nuovo_id not in s['trust']:
+                    s['trust'][nuovo_id] = 50
+                salva_configurazione_mondo()
+                st.success(f"🎉 Agente '{nuovo_nome}' creato con successo!")
+                st.rerun()
+            else:
+                st.error("❌ Compila almeno l'ID segreto e il Nome!")
+
+    else:
+        ag_dati = config['agents'][scelta_agente]
+        st.markdown(f"#### ✏️ Modifica {ag_dati['name']}")
+        bio_modificata = st.text_area("Biografia & Istruzioni AI:", value=ag_dati.get("biography", ""), height=150)
+        
+        if st.button("💾 Salva Modifiche Agente"):
+            config['agents'][scelta_agente]["biography"] = bio_modificata
+            salva_configurazione_mondo()
+            st.success(f"🎉 Biografia di '{ag_dati['name']}' salvata!")
+            st.rerun()
 
     st.divider()
     if st.button("🔒 Esci e torna alla Copertina"):
@@ -263,7 +289,6 @@ with tab_gioca:
         st.write("## 🗺️ Mappa Interattiva di Venezia")
         st.caption("Fai clic su un quartiere per viaggiare, vedere i video e parlare con l'Agente AI!")
         
-        # MAPPA INTERATTIVA
         percorso_mappa = trova_foto("mappa_venezia")
         if percorso_mappa:
             with open(percorso_mappa, "rb") as file_m:
@@ -289,7 +314,6 @@ with tab_gioca:
         st.markdown('<div class="mappa-container">', unsafe_allow_html=True)
         st.markdown("### 🧭 Scegli il quartiere da visitare:")
         
-        # BOTTONI DELLE ZONE SULLA MAPPA
         tutte_le_zone = list(config['zones'].keys())
         cols = st.columns(len(tutte_le_zone))
         for i, z_key in enumerate(tutte_le_zone):
@@ -301,7 +325,6 @@ with tab_gioca:
         st.markdown('</div>', unsafe_allow_html=True)
         st.divider()
 
-        # TROVIAMO IL PERSONAGGIO ASSOCIATO ALLA ZONA ATTUALE
         ag_id_trovato = None
         for key_m, info_m in MAPPA_PERSONAGGI.items():
             if key_m in zona_id.lower() or info_m["id"] in config['zones'][zona_id].get('owner', ''):
@@ -330,32 +353,26 @@ with tab_gioca:
             
             col_sinistra, col_destra = st.columns([1, 2])
 
-            # COLONNA DI SINISTRA: IMMAGINE, VIDEO E UPLOAD FOTO
             with col_sinistra:
                 st.subheader(f"🖼️ Foto & Media di {ag_nome}")
                 mostra_foto(ag_id_trovato, f"Ritratto: {ag_nome}")
                 
-                # VIDEO DEL PERSONAGGIO
                 st.markdown("#### 🎬 Video del Personaggio")
                 video_trovato = riproduci_video(f"{ag_id_trovato}_video")
                 if not video_trovato:
                     st.caption(f"ℹ️ Nessun video trovato per `{ag_id_trovato}_video.mp4`.")
 
-                # UPLOAD IMMAGINI PER IL PERSONAGGIO
                 st.markdown("---")
                 with st.expander(f"📸 Carica nuova immagine per {ag_nome}"):
                     nuova_img_pers = st.file_uploader(f"Scegli foto per {ag_nome}:", type=["png", "jpg", "jpeg"], key=f"up_p_{ag_id_trovato}")
                     if st.button(f"💾 Salva Foto {ag_nome}", key=f"btn_p_{ag_id_trovato}"):
                         salva_foto_caricata(nuova_img_pers, ag_id_trovato)
 
-            # COLONNA DI DESTRA: CHAT CON GEMINI + UPLOAD TESTO REGOLE
             with col_destra:
                 st.subheader(f"💬 Chat con l'Agente AI ({ag_nome})")
                 
-                # MOSTRA LA BIO ATTUALE
                 st.info(f"📜 **Comportamento dell'Agente:**\n\n_{ag_dati.get('biography', 'Nessuna biografia.')}_")
                 
-                # UPLOAD FILE TESTO CON REGOLE E BIO
                 with st.expander(f"📄 Carica File con Bio e Regole per {ag_nome} (.txt)"):
                     file_txt_caricato = st.file_uploader("Scegli un file .txt:", type=["txt"], key=f"txt_up_{ag_id_trovato}")
                     if st.button(f"💾 SALVA NUOVA BIO E REGOLE", key=f"btn_save_txt_{ag_id_trovato}"):
@@ -384,7 +401,7 @@ with tab_gioca:
                             s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                             st.success(f"{ag_nome}: {risposta_ai}")
                     else:
-                        st.warning("🔑 Manca la tua API Key Gemini! Inseriscila nella barra laterale a sinistra.")
+                        st.warning("🔑 Manca la tua API Key Gemini! Inseriscila nei Secrets di Streamlit o nella barra laterale.")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 CONSEGNA IL MESSAGGIO SEGRETO A LIZZIE!", key="win_lizzie_btn", use_container_width=True):
