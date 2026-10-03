@@ -2,6 +2,7 @@ import json
 import os
 import base64
 import time
+import random
 import streamlit as st
 import engine
 from google import genai
@@ -111,7 +112,7 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🧠 MOTORE AI GEMINI
+# 🧠 MOTORE AI GEMINI NATURALE ED EVOLUTIVO
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     client = genai.Client(api_key=api_key)
     
@@ -125,32 +126,35 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
 
     istruzioni_sistema = f"""
     **********************************************************************
-    REGOLA DI IMMERSIONE TOTALE NEL PERSONAGGIO:
-    - Tu sei {nome_personaggio}. Credi fermamente di essere questa persona!
-    - Non dire MAI che sei un'AI, un programma o un assistente virtuale.
+    REGOLA D'ORO PER IL DIALOGO UMANO E NATURALE:
+    - Tu sei {nome_personaggio}. Credi fermamente di essere vivo e in carne ed ossa a Venezia.
+    - NON ripetere mai i saluti iniziali o le stesse frasi già dette nella conversazione precedente.
+    - Parla in modo spontaneo, come una persona vera che si trova nel bel mezzo di una giornata movimentata.
+    - Sii naturale, usa sfumature di voce diverse in base a quello che dice il giocatore.
+    - NON dire mai di essere un'AI, un programma o un robot.
     **********************************************************************
     
-    ⏰ TEMPO CORRENTE NEL GIOCO: Ora {ora_narrativa} di 72 (Giorno { (ora_narrativa // 24) + 1 }).
+    ⏰ CONTESTO TEMPORALE: Ora narrativa {ora_narrativa} di 72 (Giorno {(ora_narrativa // 24) + 1}).
     
-    📜 BIBBIA DEL MONDO (SAPER COMUNE):
+    📜 BIBBIA DEL MONDO:
     {testo_bibbia}
     
-    🎭 CHI SEI TU & TUA SCHEDA PERSONALE (DAL TUO FILE IN DATA/):
+    🎭 LA TUA PERSONALITÀ E STILE DI PARLATA:
     {bio_effettiva}
     
-    🎯 IL TUO PIANO PER LE 72 ORE:
+    🎯 IL TUO PIANO ATTUALE:
     {missione_72h}
     
-    ⚙️ MOTORE DELLE TUE DECISIONI:
+    ⚙️ COME PRENDI DECISIONI:
     {motore_dec}
     
-    📓 DIARIO DELLE TUE AZIONI FINORA:
+    📓 COSA È SUCCESSO FINORA (MEMORIA):
     {diario_p}
     
-    REGOLE DI INTERAZIONE CON IL GIOCATORE:
-    1. Tieni conto dell'ora attuale ({ora_narrativa}/72). Chiedi aiuto al giocatore in base a quello di cui hai bisogno PROPRIO IN QUESTO MOMENTO!
-    2. Comportati rigorosamente secondo le indicazioni della tua scheda personale e della Bibbia del mondo!
-    3. Rispondi sempre in italiano, brevemente (2-3 frasi) e con il tuo stile unico.
+    REGOLE DI RISPOSTA:
+    1. Rispondi alla frase del giocatore continuando il discorso in modo fluido.
+    2. Rispondi in italiano in modo breve e d'impatto (2-3 frasi al massimo), senza fare prediche.
+    3. Fai evolvere il dialogo: ogni risposta deve aggiungere un piccolo dettaglio nuovo o fare una domanda al giocatore per mandare avanti la storia.
     """
     
     testo_cronologia = ""
@@ -158,9 +162,14 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione precedente]:\n{testo_cronologia}\nGiocatore: '{messaggio_giocatore}'\n{nome_personaggio}:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione avvenuta finora]:\n{testo_cronologia}\nGiocatore adesso dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde in modo naturale:"
     
     modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
+    
+    config_generazione = {
+        "temperature": 0.8,  # 🌡️ Alta creatività per variabilità e naturalezza!
+        "top_p": 0.95,
+    }
     
     for mod in modelli:
         for t in range(2):
@@ -168,6 +177,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
                 response = client.models.generate_content(
                     model=mod,
                     contents=prompt_completo,
+                    config=config_generazione
                 )
                 if response and hasattr(response, 'text') and response.text:
                     testo_pulito = response.text.strip()
@@ -176,7 +186,13 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
             except Exception:
                 time.sleep(1)
                 
-    return f"«Sono occupato con i miei affari all'ora {ora_narrativa}... Parlami chiaramente: che vuoi?»"
+    frasi_emergenza = [
+        f"«Senti, l'ora {ora_narrativa} sta volando... dimmi al sodo cosa vuoi da me!»",
+        f"«Sto guardando i canali di Venezia e stavo pensando a quello che hai appena detto... Spiegati meglio.»",
+        f"«Non mi piace perdere tempo all'ora {ora_narrativa}. Hai qualcosa di utile da propormi o no?»",
+        f"«Mm, mi stai facendo riflettere. Continuo a non fidarmi al 100%, ma ti ascolto...»"
+    ]
+    return random.choice(frasi_emergenza)
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
