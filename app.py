@@ -166,7 +166,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     
     modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
     
-    # 🧪 CREATIVITÀ AL MASSIMO (0.95)
+    # 🧪 CREATIVITÀ AL MASSIMO (0.95) PER VARIABILITÀ E NATURALEZZA
     config_generazione = {
         "temperature": 0.95,
         "top_p": 0.95,
@@ -311,7 +311,7 @@ if st.session_state.mostra_lab:
             gemini_key = st.text_input("🔑 Chiave API Gemini:", type="password")
 
         st.divider()
-        st.subheader("🖼️ Agenti in Fila")
+        st.subheader("🖼️️ Agenti in Fila")
 
         for id_agent, info_agent in config['agents'].items():
             col_fig_foto, col_fig_nome = st.columns([1, 2])
