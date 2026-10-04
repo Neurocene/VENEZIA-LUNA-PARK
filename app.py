@@ -11,6 +11,11 @@ from google import genai
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
+# 🔑 LA TUA CHIAVE API SCRITTA DIRETTAMENTE NEL CODICE!
+# ---------------------------------------------------------
+CHIAVE_API_DIRETTA = "AQ.Ab8RN6L8Z0zNXjLqy5Gxjn7v2SAKURMBIoW_1uzivlsaPoJeBA"  # <-- Metti la tua chiave qui dentro le virgolette!
+
+# ---------------------------------------------------------
 # 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park — Missione 72 Ore", layout="wide", page_icon="🎭")
@@ -130,7 +135,6 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     motore_dec = info_agente.get("motore_decisionale", "Valuta se il giocatore può esserti utile prima di fidarti.")
     diario_p = info_agente.get("diario_partita", "Nessun evento recente.")
 
-    # 🎬 CHIEDIAMO UN SUGGERIMENTO AL REGISTA (STORY FACTORY)
     inventario = st.session_state.get("inventario_giocatore", ["vhs_brago"])
     suggerimento_regista = st.session_state.story_factory.trova_opportunita(
         posizione_giocatore=s['location'],
@@ -204,7 +208,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     except Exception as e_generale:
         st.error(f"⚠️ Errore API: {e_generale}")
 
-    return f"⚠️ [ERRORE CHIAVE GEMINI] {nome_personaggio} non riesce a sentire la tua voce! Verificare la Chiave API inserita nel Character's Lab."
+    return f"⚠️ [ERRORE CHIAVE GEMINI] {nome_personaggio} non riesce a sentire la tua voce! Verificare la Chiave API inserita nel codice o nel Character's Lab."
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -317,12 +321,9 @@ if st.session_state.mostra_lab:
         st.caption("Pannello di controllo degli Agenti AI!")
 
         if "gemini_key_utente" not in st.session_state:
-            try:
-                st.session_state.gemini_key_utente = st.secrets.get("GEMINI_API_KEY", "")
-            except Exception:
-                st.session_state.gemini_key_utente = ""
+            st.session_state.gemini_key_utente = CHIAVE_API_DIRETTA
 
-        chiave_input = st.text_input("🔑 Incolla qui la tua Chiave API Gemini:", value=st.session_state.gemini_key_utente, type="password")
+        chiave_input = st.text_input("🔑 Chiave API Gemini attiva:", value=st.session_state.gemini_key_utente, type="password")
         if chiave_input:
             st.session_state.gemini_key_utente = chiave_input.strip()
 
@@ -550,18 +551,20 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        try:
-                            gemini_key = st.secrets.get("GEMINI_API_KEY", "")
-                        except Exception:
-                            gemini_key = ""
+                        # ORDINE DI CONTROLLO CHIAVE: 1. Codice Diretto -> 2. Secrets -> 3. Interface Input
+                        gemini_key = CHIAVE_API_DIRETTA.strip()
+                        
+                        if not gemini_key or gemini_key == "INCOLLA_QUI_LA_TUA_CHIAVE_API":
+                            try:
+                                gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+                            except Exception:
+                                gemini_key = ""
 
                         if not gemini_key:
                             gemini_key = st.session_state.get("gemini_key_utente", "")
                         
-                        if gemini_key:
+                        if gemini_key and gemini_key != "INCOLLA_QUI_LA_TUA_CHIAVE_API":
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
-                            
-                            # SALVIAMO L'AZIONE NELL'EVENT BUS!
                             st.session_state.event_bus.registra_evento("parla", "Giocatore", ag_nome, frase_utente)
                             
                             with st.spinner(f"⚡ {ag_nome} sta riflettendo (Ora {ora_attuale})..."):
@@ -578,7 +581,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.error("🔑 Manca la chiave API! Clicca su 'CHARACTER'S LAB' in alto a sinistra e incolla la tua Chiave API Gemini.")
+                            st.error("🔑 Manca la chiave API! Incolla la tua chiave vera nella riga 14 del codice app.py!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
