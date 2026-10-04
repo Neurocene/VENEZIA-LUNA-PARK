@@ -10,11 +10,10 @@ from google import genai
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
-# 🔑 INCOLLA LA TUA NUOVA CHIAVE API TRA LE VIRGOLETTE!
+# 🔑 INCOLLA LA TUA NUOVA CHIAVE API GEMINI QUI SOTTO!
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6LT2Hs6_m4PjzmLD3uGNBEzBEgLzU5IypuralObLrXVdA"  # <-- Metti qui la tua nuova chiave!
+CHIAVE_SEGRETA_NASCOSTA = "INCOLLA_QUI_LA_TUA_NUOVA_CHIAVE"  # <-- Metti qui la tua chiave tra le virgolette!
 
-# Pulizia automatica da eventuali spazi vuoti incollati per sbaglio
 CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
 
 # ---------------------------------------------------------
@@ -163,13 +162,12 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\n[Chat finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Chat finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio}:"
     
     try:
         client = genai.Client(api_key=api_key)
         
-        # PROVIAMO DIVERSI MODELLI PER VEDERE QUALE RISPONDE
-        modelli = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+        modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
         
         for mod in modelli:
             try:
@@ -181,11 +179,11 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
                 if response and hasattr(response, 'text') and response.text:
                     return response.text.strip()
             except Exception as e_singolo:
-                st.caption(f"⚠️ Modello {mod} non disponibile: {e_singolo}")
-                continue
+                # SE UN MODELLO DÀ ERRORE, LO STAMPIAMO SULLO SCHERMO COSÌ CAPISCI SUBITO COSA C'È CHE NON VA!
+                return f"⚠️️ [DETTAGLIO ERRORE GEMINI ({mod})]: {e_singolo}"
 
     except Exception as e_generale:
-        return f"⚠️ Errore di connessione: {e_generale}"
+        return f"⚠️ Errore di connessione Client: {e_generale}"
 
     return "⚠️ Errore: Impossibile connettersi a Gemini. Controlla che la nuova chiave sia valida!"
 
@@ -472,7 +470,7 @@ with tab_gioca:
 
         if "santa_croce" in zona_id.lower() or zona_id == "lizzie_bar":
             st.markdown("## 🍸 Lizzie Bar")
-            st.info("ℹ️ Il Lizzie Bar apre le sue porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
+            st.info("ℹ️ Il Lizzie Bar apre le its porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
             ag_id_trovato = "lizzie"
 
         if ag_id_trovato:
@@ -534,7 +532,6 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        # PRENDIAMO LA CHIAVE DALLA RIGA 13 OPPURE DAI SECRETS
                         gemini_key = CHIAVE_PULITA
                         
                         if not gemini_key or "INCOLLA_QUI" in gemini_key:
@@ -577,7 +574,7 @@ with tab_gioca:
 
 # --- TAB 2: MAPPA ---
 with tab_mappa:
-    st.subheader("🗺️ Mappa Geografica di Venezia")
+    st.subheader("🗺️️ Mappa Geografica di Venezia")
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     with st.expander("📸 Carica o cambia l'Immagine della Mappa"):
         nuova_foto_mappa_tab = st.file_uploader("Scegli immagine per la Mappa:", type=["png", "jpg", "jpeg"], key="up_map_tab")
