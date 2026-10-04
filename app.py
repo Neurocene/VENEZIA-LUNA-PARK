@@ -12,7 +12,7 @@ from story_factory import EventBus, StoryFactory, valida_azione
 # ---------------------------------------------------------
 # 🔑 INCOLLA LA TUA NUOVA CHIAVE API GEMINI QUI SOTTO!
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "INCOLLA_QUI_LA_TUA_NUOVA_CHIAVE"  # <-- Metti qui la tua chiave tra le virgolette!
+CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6LT2Hs6_m4PjzmLD3uGNBEzBEgLzU5IypuralObLrXVdA"  # <-- Metti qui la tua chiave tra le virgolette!
 
 CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
 
