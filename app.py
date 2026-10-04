@@ -7,7 +7,7 @@ import streamlit as st
 import engine
 from google import genai
 
-# 🎬 IMPORTIAMO LA NOSTRA STORY FACTORY
+# 🎬 IMPORTIAMO LA STORY FACTORY
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
@@ -34,7 +34,7 @@ if "event_bus" not in st.session_state:
 if "story_factory" not in st.session_state:
     st.session_state.story_factory = StoryFactory(st.session_state.event_bus)
 
-# 📖 LEGGERE LA BIO DAI FILE IN DATA/
+# 📖 CANNOCCHIALE PER LEGGERE LA BIO DEI PERSONAGGI
 def carica_bio_personaggio(id_personaggio, bio_default=""):
     nomi_da_provare = [
         f"{id_personaggio}.txt",
@@ -105,7 +105,7 @@ def salva_foto_caricata(file_caricato, nome_destinazione):
         percorso_finale = os.path.join("assets", f"{nome_destinazione}.{est}")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Immagine salvata in assets!")
+        st.success("🎉 Immagine salvata in assets!")
         st.rerun()
 
 def salva_video_caricato(file_caricato, nome_destinazione):
@@ -113,14 +113,14 @@ def salva_video_caricato(file_caricato, nome_destinazione):
         percorso_finale = os.path.join("assets", f"{nome_destinazione}_video.mp4")
         with open(percorso_finale, "wb") as f:
             f.write(file_caricato.getbuffer())
-        st.success(f"🎉 Video salvato in assets!")
+        st.success("🎉 Video salvato in assets!")
         st.rerun()
 
 def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🎭 CERVELLO DI RECITAZIONE DI GEMINI CON INTEGRATA LA STORY FACTORY
+# 🎭 MOTORE DI RECITAZIONE GEMINI SUPER CREATIVO
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
@@ -170,7 +170,7 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     REGOLE DI DIALOGO:
     1. Rispondi continuando il discorso iniziato dal giocatore.
     2. Rispondi in italiano in modo breve e d'impatto (2-3 frasi al massimo).
-    3. Fai avanzare la storia con una domanda o una reazione.
+    3. Fai avanzare la storia con una domanda o una reazione!
     """
     
     testo_cronologia = ""
@@ -327,7 +327,7 @@ if st.session_state.mostra_lab:
             st.session_state.gemini_key_utente = chiave_input.strip()
 
         st.divider()
-        st.subheader("🖼️️ Agenti in Fila")
+        st.subheader("🖼️ Agenti in Fila")
 
         for id_agent, info_agent in config['agents'].items():
             col_fig_foto, col_fig_nome = st.columns([1, 2])
@@ -435,7 +435,7 @@ with tab_gioca:
             st.balloons()
             st.success("🎉 VITTORIA! Sei riuscito a farti invitare ed entrare al Lizzie Bar prima dello scadere dei 3 giorni!")
         else:
-            st.error(f"❌ GAME OVER: Le 72 ore sono scorse e la porta del Lizzie Bar è chiusa!")
+            st.error("❌ GAME OVER: Le 72 ore sono scorse e la porta del Lizzie Bar è chiusa!")
             
     else:
         st.write("## 🗺️ Mappa Interattiva di Venezia")
@@ -511,20 +511,20 @@ with tab_gioca:
                 st.markdown("#### 🎬 Video")
                 video_trovato = riproduci_video(f"{ag_id_trovato}_video")
                 if not video_trovato:
-                    st.caption(f"ℹ️ Nessun video trovato.")
+                    st.caption("ℹ️ Nessun video trovato.")
 
                 st.markdown("---")
-                with st.expander(f"📸 / 🎬 Carica Media"):
-                    nuova_img = st.file_uploader(f"📸 Foto Personaggio:", type=["png", "jpg", "jpeg"], key=f"up_img_{ag_id_trovato}")
-                    if st.button(f"💾 Salva Foto Personaggio", key=f"btn_img_{ag_id_trovato}"):
+                with st.expander("📸 / 🎬 Carica Media"):
+                    nuova_img = st.file_uploader("📸 Foto Personaggio:", type=["png", "jpg", "jpeg"], key=f"up_img_{ag_id_trovato}")
+                    if st.button("💾 Salva Foto Personaggio", key=f"btn_img_{ag_id_trovato}"):
                         salva_foto_caricata(nuova_img, ag_id_trovato)
                         
                     nuova_loc = st.file_uploader(f"🏰 Foto Location ({nome_zona}):", type=["png", "jpg", "jpeg"], key=f"up_loc_{zona_id}")
-                    if st.button(f"💾 Salva Foto Location", key=f"btn_loc_{zona_id}"):
+                    if st.button("💾 Salva Foto Location", key=f"btn_loc_{zona_id}"):
                         salva_foto_caricata(nuova_loc, zona_id)
 
-                    nuovo_vid = st.file_uploader(f"🎬 Video Personaggio (.mp4):", type=["mp4"], key=f"up_vid_{ag_id_trovato}")
-                    if st.button(f"💾 Salva Video Personaggio", key=f"btn_vid_{ag_id_trovato}"):
+                    nuovo_vid = st.file_uploader("🎬 Video Personaggio (.mp4):", type=["mp4"], key=f"up_vid_{ag_id_trovato}")
+                    if st.button("💾 Salva Video Personaggio", key=f"btn_vid_{ag_id_trovato}"):
                         salva_video_caricato(nuovo_vid, ag_id_trovato)
 
             with col_destra:
@@ -550,12 +550,18 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        gemini_key = st.secrets.get("GEMINI_API_KEY", "") or st.session_state.get("gemini_key_utente", "")
+                        try:
+                            gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+                        except Exception:
+                            gemini_key = ""
+
+                        if not gemini_key:
+                            gemini_key = st.session_state.get("gemini_key_utente", "")
                         
                         if gemini_key:
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             
-                            # REGISTRIAMO L'AZIONE NELL'EVENT BUS!
+                            # SALVIAMO L'AZIONE NELL'EVENT BUS!
                             st.session_state.event_bus.registra_evento("parla", "Giocatore", ag_nome, frase_utente)
                             
                             with st.spinner(f"⚡ {ag_nome} sta riflettendo (Ora {ora_attuale})..."):
@@ -572,7 +578,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.error("🔑 Manca la chiave API! Apri il CHARACTER'S LAB in alto a sinistra e incolla la tua Chiave API Gemini.")
+                            st.error("🔑 Manca la chiave API! Clicca su 'CHARACTER'S LAB' in alto a sinistra e incolla la tua Chiave API Gemini.")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
