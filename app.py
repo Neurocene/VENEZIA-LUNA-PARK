@@ -12,7 +12,7 @@ from story_factory import EventBus, StoryFactory, valida_azione
 # ---------------------------------------------------------
 # 🔐 LA TUA CHIAVE NASCOSTA DENTRO IL CODICE!
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6L8Z0zNXjLqy5Gxjn7v2SAKURMBIoW_1uzivlsaPoJeBA"  # <-- Metti qui la chiave tra le virgolette!
+CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6L8Z0zNXjLqy5Gxjn7v2SAKURMBIoW_1uzivlsaPoJeBA"# <-- Metti qui la chiave tra le virgolette!
 
 # ---------------------------------------------------------
 # 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
