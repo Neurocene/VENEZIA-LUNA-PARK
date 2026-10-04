@@ -5,16 +5,20 @@ import time
 import random
 import streamlit as st
 import engine
-from google import genai
+
+# 🛠️ CARICHIAMO IL CERVELLO DI GOOGLE
+try:
+    import google.generativeai as genai
+    LIBRERIA_OK = True
+except ImportError:
+    LIBRERIA_OK = False
 
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
-# 🔑 INCOLLA LA TUA NUOVA CHIAVE API GEMINI QUI SOTTO!
+# 🔑 CHIAVE API PREDEFINITA NEL CODICE (OPZIONALE)
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6JixeflX6j1QiG60LPuKbqpbOnnMaluDaPFu4p9Gd1dbQ"  # <-- Metti qui la tua chiave!
-
-CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
+CHIAVE_NEL_CODICE = "INCOLLA_QUI_LA_TUA_CHIAVE_SE_VUOI"
 
 # ---------------------------------------------------------
 # 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
@@ -126,8 +130,11 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🎭 MOTORE DI RECITAZIONE TEATRALE GEMINI (CON LA NUOVA LIBRERIA GOOGLE-GENAI)
-def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
+# 🎭 MOTORE DI RECITAZIONE TEATRALE DI GEMINI CON SCELTA DEL MODELLO
+def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, modello_scelto, cronologia_chat=[]):
+    if not LIBRERIA_OK:
+        return "⚠️ Errore: Manca la libreria `google-generativeai` nel file requirements.txt!"
+
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
     
@@ -165,21 +172,22 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     prompt_completo = f"{istruzioni_sistema}\n\n[Chat finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio}:"
     
     try:
-        # Inizializziamo il client ufficiale di Google
-        client = genai.Client(api_key=api_key)
+        genai.configure(api_key=api_key)
         
-        # Usiamo il modello Flash 2.5 supportato nativamente
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt_completo,
+        # USA IL MODELLO SELEZIONATO DALL'INTERFACCIA
+        model = genai.GenerativeModel(modello_scelto)
+        
+        response = model.generate_content(
+            prompt_completo,
+            generation_config={"temperature": 0.9}
         )
-        if response and hasattr(response, 'text') and response.text:
+        if response and response.text:
             return response.text.strip()
 
     except Exception as e_generale:
-        return f"⚠️ Errore API: {e_generale}"
+        return f"⚠️ Errore API con modello {modello_scelto}: {e_generale}"
 
-    return "⚠️ Errore: Impossibile connettersi a Gemini. Verificare la chiave API alla riga 14!"
+    return "⚠️ Errore: Impossibile connettersi a Gemini. Apri il CHARACTER'S LAB in alto a sinistra per cambiare opzioni!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -284,17 +292,44 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 CHARACTER'S LAB
+# 🚪 CHARACTER'S LAB CON PANNELLO DI SOCCORSO AI
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
         st.header("🎭 CHARACTER'S LAB")
         st.caption("Pannello di controllo degli Agenti AI!")
 
-        if CHIAVE_PULITA and "INCOLLA_QUI" not in CHIAVE_PULITA:
-            st.success("🟢 Spia Verde: La chiave nuova è caricata nel codice!")
+        st.divider()
+        st.subheader("⚙️ Cabina di Risoluzione Problemi AI")
+
+        # 1. SCELTA DEL MODELLO DALL'INTERFACCIA
+        modello_selezionato = st.selectbox(
+            "🤖 Scegli il Modello AI di Gemini:",
+            options=["gemini-1.5-flash", "gemini-1.5-pro"],
+            index=0,
+            help="Se uno non risponde, prova a passare all'altro!"
+        )
+
+        # 2. CHIAVE DALL'INTERFACCIA SE SERVE
+        if "chiave_utente_interfaccia" not in st.session_state:
+            st.session_state.chiave_utente_interfaccia = ""
+
+        chiave_manuale = st.text_input(
+            "🔑 Incolla qui la Chiave API se vuoi cambiarla:",
+            value=st.session_state.chiave_utente_interfaccia,
+            type="password",
+            placeholder="AIzaSy..."
+        )
+        if chiave_manuale:
+            st.session_state.chiave_utente_interfaccia = chiave_manuale.strip()
+
+        # DETERMINIAMO LA CHIAVE FINALE DA USARE
+        chiave_effettiva = st.session_state.chiave_utente_interfaccia or CHIAVE_NEL_CODICE.strip()
+
+        if chiave_effettiva.startswith("AIzaSy"):
+            st.success("🟢 Spia Verde: Chiave carica e attiva!")
         else:
-            st.error("🔴 Spia Rossa: Incolla la nuova chiave alla riga 14 di app.py!")
+            st.warning("🟡 Attenzione: Incolla la tua nuova chiave API qui sopra per far parlare i personaggi!")
 
         st.divider()
         st.subheader("🖼️ Agenti in Fila")
@@ -388,6 +423,9 @@ if st.session_state.mostra_lab:
         if st.button("❌ Chiudi CHARACTER'S LAB"):
             st.session_state.mostra_lab = False
             st.rerun()
+else:
+    modello_selezionato = "gemini-1.5-flash"
+    chiave_effettiva = st.session_state.get("chiave_utente_interfaccia", "") or CHIAVE_NEL_CODICE.strip()
 
 st.divider()
 
@@ -520,33 +558,26 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        gemini_key = CHIAVE_PULITA
-                        
-                        if not gemini_key or "INCOLLA_QUI" in gemini_key:
-                            try:
-                                gemini_key = st.secrets.get("GEMINI_API_KEY", "").strip()
-                            except Exception:
-                                gemini_key = ""
-
-                        if gemini_key and "INCOLLA_QUI" not in gemini_key:
+                        if chiave_effettiva and "INCOLLA_QUI" not in chiave_effettiva:
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             st.session_state.event_bus.registra_evento("parla", "Giocatore", ag_nome, frase_utente)
                             
                             with st.spinner(f"⚡ {ag_nome} sta riflettendo (Ora {ora_attuale})..."):
                                 risposta_ai = fai_parlare_agente_gemini(
-                                    gemini_key, 
+                                    chiave_effettiva, 
                                     ag_nome, 
                                     ag_id_trovato,
                                     ag_dati.get('biography', ''), 
                                     frase_utente,
                                     ora_attuale,
+                                    modello_selezionato,
                                     st.session_state.chat_history[ag_id_trovato]
                                 )
                                 st.session_state.chat_history[ag_id_trovato].append({"role": "assistant", "content": risposta_ai})
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.error("🔑 Incolla la tua nuova chiave alla riga 14 del file app.py!")
+                            st.error("🔑 Manca la chiave API! Apri il CHARACTER'S LAB in alto a sinistra per incollarla!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
