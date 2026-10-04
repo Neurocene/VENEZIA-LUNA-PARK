@@ -12,7 +12,7 @@ from story_factory import EventBus, StoryFactory, valida_azione
 # ---------------------------------------------------------
 # 🔑 INCOLLA QUI SOTTO LA CHIAVE CHE INIZIA CON AIzaSy...
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "INCOLLA_QUI_LA_TUA_CHIAVE_VERA_CHE_INIZIA_CON_AIzaSy"
+CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6JixeflX6j1QiG60LPuKbqpbOnnMaluDaPFu4p9Gd1dbQy"
 
 # Pulizia automatica da eventuali spazi vuoti presi per sbaglio
 CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
