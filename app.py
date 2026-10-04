@@ -5,15 +5,16 @@ import time
 import random
 import streamlit as st
 import engine
-from google import genai
+import google.generativeai as genai
 
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
-# 🔑 INCOLLA LA TUA NUOVA CHIAVE API GEMINI QUI SOTTO!
+# 🔑 INCOLLA QUI SOTTO LA CHIAVE CHE INIZIA CON AIzaSy...
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6Kulb2AF3I_WZ07pxwF017Vr5d9iu1kjJKofAv-XW8r2Q"  # <-- Metti qui la tua chiave vera!
+CHIAVE_SEGRETA_NASCOSTA = "INCOLLA_QUI_LA_TUA_CHIAVE_VERA_CHE_INIZIA_CON_AIzaSy"
 
+# Pulizia automatica da eventuali spazi vuoti presi per sbaglio
 CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
 
 # ---------------------------------------------------------
@@ -126,7 +127,7 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🎭 MOTORE DI RECITAZIONE TEATRALE DI GEMINI (MODELLI AGGIORNATI!)
+# 🎭 MOTORE DI RECITAZIONE TEATRALE DI GEMINI
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
@@ -165,28 +166,20 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     prompt_completo = f"{istruzioni_sistema}\n\n[Chat finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio}:"
     
     try:
-        client = genai.Client(api_key=api_key)
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # USARE MODELLI ATTIVI E VALIDI
-        modelli = ['gemini-1.5-flash', 'gemini-1.5-pro']
-        
-        for mod in modelli:
-            try:
-                response = client.models.generate_content(
-                    model=mod,
-                    contents=prompt_completo,
-                    config={"temperature": 0.95}
-                )
-                if response and hasattr(response, 'text') and response.text:
-                    return response.text.strip()
-            except Exception as e_singolo:
-                st.caption(f"ℹ️ Prova {mod}: {e_singolo}")
-                continue
+        response = model.generate_content(
+            prompt_completo,
+            generation_config={"temperature": 0.9}
+        )
+        if response and response.text:
+            return response.text.strip()
 
     except Exception as e_generale:
-        return f"⚠️ Errore Client Gemini: {e_generale}"
+        return f"⚠️ Errore di connessione: {e_generale}"
 
-    return "⚠️ Errore: Impossibile connettersi a Gemini. Verifica che la chiave sia corretta e attiva su AI Studio!"
+    return "⚠️ Errore: Impossibile connettersi a Gemini. Controlla che la chiave inizi con AIzaSy!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -298,19 +291,13 @@ if st.session_state.mostra_lab:
         st.header("🎭 CHARACTER'S LAB")
         st.caption("Pannello di controllo degli Agenti AI!")
 
-        if CHIAVE_PULITA and "INCOLLA_QUI" not in CHIAVE_PULITA:
-            st.success("🔒 Nuova Chiave API attiva nel codice!")
+        if CHIAVE_PULITA.startswith("AIzaSy"):
+            st.success("🔒 Chiave API corretta e attiva nel codice!")
         else:
-            try:
-                if st.secrets.get("GEMINI_API_KEY", ""):
-                    st.success("🔒 Chiave API letta dai Secrets!")
-                else:
-                    st.error("❌ Manca la nuova Chiave API alla riga 13 del file app.py!")
-            except Exception:
-                st.error("❌ Manca la nuova Chiave API alla riga 13 del file app.py!")
+            st.error("❌ Manca la chiave vera che inizia con AIzaSy alla riga 13 del file app.py!")
 
         st.divider()
-        st.subheader("🖼️ Agenti in Fila")
+        st.subheader("🖼️️ Agenti in Fila")
 
         for id_agent, info_agent in config['agents'].items():
             col_fig_foto, col_fig_nome = st.columns([1, 2])
@@ -559,7 +546,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.error("🔑 Manca la nuova chiave API! Incolla la tua nuova chiave alla riga 13 del file app.py!")
+                            st.error("🔑 Manca la nuova chiave API che inizia con AIzaSy alla riga 13 di app.py!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
