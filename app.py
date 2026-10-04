@@ -12,7 +12,7 @@ from story_factory import EventBus, StoryFactory, valida_azione
 # ---------------------------------------------------------
 # 🔑 INCOLLA LA TUA NUOVA CHIAVE API TRA LE VIRGOLETTE!
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6L8Z0zNXjLqy5Gxjn7v2SAKURMBIoW_1uzivlsaPoJeBA"  # <-- Metti qui la tua nuova chiave!
+CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6LT2Hs6_m4PjzmLD3uGNBEzBEgLzU5IypuralObLrXVdA"  # <-- Metti qui la tua nuova chiave!
 
 # Pulizia automatica da eventuali spazi vuoti incollati per sbaglio
 CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
