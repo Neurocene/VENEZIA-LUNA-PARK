@@ -10,9 +10,12 @@ from google import genai
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
-# 🔐 LA TUA CHIAVE NASCOSTA DENTRO IL CODICE!
+# 🔑 INCOLLA LA TUA NUOVA CHIAVE API TRA LE VIRGOLETTE!
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6L8Z0zNXjLqy5Gxjn7v2SAKURMBIoW_1uzivlsaPoJeBA"# <-- Metti qui la chiave tra le virgolette!
+CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6L8Z0zNXjLqy5Gxjn7v2SAKURMBIoW_1uzivlsaPoJeBA"  # <-- Metti qui la tua nuova chiave!
+
+# Pulizia automatica da eventuali spazi vuoti incollati per sbaglio
+CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
 
 # ---------------------------------------------------------
 # 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
@@ -142,9 +145,9 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     )
 
     istruzioni_sistema = f"""
-    Tu sei l'attore che interpreta {nome_personaggio}. Vivi davvero a Venezia Luna Park!
+    Tu sei {nome_personaggio}. Vivi davvero a Venezia Luna Park!
     Non sei un'AI o un robot. NON ripetere mai la stessa frase.
-    Rispondi sempre in italiano in modo breve e d'impatto (2-3 frasi al massimo).
+    Rispondi sempre in italiano in modo breve (2-3 frasi al massimo).
     
     ⏰ Ora nel gioco: {ora_narrativa}/72.
     📜 Mondo: {testo_bibbia}
@@ -160,10 +163,12 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\n[Chat finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitando:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Chat finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde:"
     
     try:
         client = genai.Client(api_key=api_key)
+        
+        # PROVIAMO DIVERSI MODELLI PER VEDERE QUALE RISPONDE
         modelli = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
         
         for mod in modelli:
@@ -171,17 +176,18 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
                 response = client.models.generate_content(
                     model=mod,
                     contents=prompt_completo,
-                    config={"temperature": 0.95, "top_p": 0.95}
+                    config={"temperature": 0.95}
                 )
                 if response and hasattr(response, 'text') and response.text:
                     return response.text.strip()
-            except Exception:
+            except Exception as e_singolo:
+                st.caption(f"⚠️ Modello {mod} non disponibile: {e_singolo}")
                 continue
 
     except Exception as e_generale:
-        return f"⚠️ Errore di connessione con Gemini: {e_generale}"
+        return f"⚠️ Errore di connessione: {e_generale}"
 
-    return "⚠️ Errore: Impossibile parlare con Gemini. Controlla che la chiave nella riga 13 del codice sia corretta!"
+    return "⚠️ Errore: Impossibile connettersi a Gemini. Controlla che la nuova chiave sia valida!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -286,24 +292,23 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 CHARACTER'S LAB (PANNELLO SENZA MOSTRARE LA CHIAVE!)
+# 🚪 CHARACTER'S LAB
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
         st.header("🎭 CHARACTER'S LAB")
         st.caption("Pannello di controllo degli Agenti AI!")
 
-        # MESSAGGIO DI CONFERMA PER DIRE CHE LA CHIAVE C'È ED È NASCOSTA
-        if CHIAVE_SEGRETA_NASCOSTA and "INCOLLA_QUI" not in CHIAVE_SEGRETA_NASCOSTA:
-            st.success("🔒 Chiave API attiva nel codice!")
+        if CHIAVE_PULITA and "INCOLLA_QUI" not in CHIAVE_PULITA:
+            st.success("🔒 Nuova Chiave API attiva nel codice!")
         else:
             try:
                 if st.secrets.get("GEMINI_API_KEY", ""):
                     st.success("🔒 Chiave API letta dai Secrets!")
                 else:
-                    st.warning("⚠️ Manca la Chiave API nel codice (riga 13)!")
+                    st.error("❌ Manca la nuova Chiave API alla riga 13 del file app.py!")
             except Exception:
-                st.warning("⚠️ Manca la Chiave API nel codice (riga 13)!")
+                st.error("❌ Manca la nuova Chiave API alla riga 13 del file app.py!")
 
         st.divider()
         st.subheader("🖼️ Agenti in Fila")
@@ -529,8 +534,8 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        # PRENDIAMO LA CHIAVE NASCOSTA RIGA 13, OPPURE DAI SECRETS
-                        gemini_key = CHIAVE_SEGRETA_NASCOSTA.strip()
+                        # PRENDIAMO LA CHIAVE DALLA RIGA 13 OPPURE DAI SECRETS
+                        gemini_key = CHIAVE_PULITA
                         
                         if not gemini_key or "INCOLLA_QUI" in gemini_key:
                             try:
@@ -556,7 +561,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.error("🔑 Manca la chiave API! Incolla la tua chiave vera alla riga 13 del file app.py!")
+                            st.error("🔑 Manca la nuova chiave API! Incolla la tua nuova chiave alla riga 13 del file app.py!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
