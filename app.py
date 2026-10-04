@@ -12,7 +12,7 @@ from story_factory import EventBus, StoryFactory, valida_azione
 # ---------------------------------------------------------
 # 🔑 INCOLLA LA TUA NUOVA CHIAVE API GEMINI QUI SOTTO!
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6LT2Hs6_m4PjzmLD3uGNBEzBEgLzU5IypuralObLrXVdA"  # <-- Metti qui la tua chiave tra le virgolette!
+CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6LT2Hs6_m4PjzmLD3uGNBEzBEgLzU5IypuralObLrXVdA"  # <-- Metti qui la tua chiave vera!
 
 CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
 
@@ -126,7 +126,7 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🎭 MOTORE DI RECITAZIONE TEATRALE DI GEMINI
+# 🎭 MOTORE DI RECITAZIONE TEATRALE DI GEMINI (MODELLI AGGIORNATI!)
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
@@ -167,7 +167,8 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     try:
         client = genai.Client(api_key=api_key)
         
-        modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
+        # USARE MODELLI ATTIVI E VALIDI
+        modelli = ['gemini-1.5-flash', 'gemini-1.5-pro']
         
         for mod in modelli:
             try:
@@ -179,13 +180,13 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
                 if response and hasattr(response, 'text') and response.text:
                     return response.text.strip()
             except Exception as e_singolo:
-                # SE UN MODELLO DÀ ERRORE, LO STAMPIAMO SULLO SCHERMO COSÌ CAPISCI SUBITO COSA C'È CHE NON VA!
-                return f"⚠️️ [DETTAGLIO ERRORE GEMINI ({mod})]: {e_singolo}"
+                st.caption(f"ℹ️ Prova {mod}: {e_singolo}")
+                continue
 
     except Exception as e_generale:
-        return f"⚠️ Errore di connessione Client: {e_generale}"
+        return f"⚠️ Errore Client Gemini: {e_generale}"
 
-    return "⚠️ Errore: Impossibile connettersi a Gemini. Controlla che la nuova chiave sia valida!"
+    return "⚠️ Errore: Impossibile connettersi a Gemini. Verifica che la chiave sia corretta e attiva su AI Studio!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -470,7 +471,7 @@ with tab_gioca:
 
         if "santa_croce" in zona_id.lower() or zona_id == "lizzie_bar":
             st.markdown("## 🍸 Lizzie Bar")
-            st.info("ℹ️ Il Lizzie Bar apre le its porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
+            st.info("ℹ️ Il Lizzie Bar apre le sue porte solo la sera per chi è riuscito a farsi stringere un'alleanza con i personaggi giusti!")
             ag_id_trovato = "lizzie"
 
         if ag_id_trovato:
@@ -574,7 +575,7 @@ with tab_gioca:
 
 # --- TAB 2: MAPPA ---
 with tab_mappa:
-    st.subheader("🗺️️ Mappa Geografica di Venezia")
+    st.subheader("🗺️ Mappa Geografica di Venezia")
     mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
     with st.expander("📸 Carica o cambia l'Immagine della Mappa"):
         nuova_foto_mappa_tab = st.file_uploader("Scegli immagine per la Mappa:", type=["png", "jpg", "jpeg"], key="up_map_tab")
