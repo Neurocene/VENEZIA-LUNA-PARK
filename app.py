@@ -5,16 +5,21 @@ import time
 import random
 import streamlit as st
 import engine
-import google.generativeai as genai
+
+# 🛠️ CARICHIAMO IL CERVELLO DI GOOGLE
+try:
+    import google.generativeai as genai
+    LIBRERIA_OK = True
+except ImportError:
+    LIBRERIA_OK = False
 
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
-# 🔑 INCOLLA QUI SOTTO LA CHIAVE CHE INIZIA CON AIzaSy...
+# 🔑 INCOLLA LA TUA NUOVA CHIAVE API QUI SOTTO!
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6JixeflX6j1QiG60LPuKbqpbOnnMaluDaPFu4p9Gd1dbQy"
+CHIAVE_SEGRETA_NASCOSTA = "INCOLLA_QUI_LA_TUA_NUOVA_CHIAVE_VERA"  # <-- Metti qui la tua chiave nuova!
 
-# Pulizia automatica da eventuali spazi vuoti presi per sbaglio
 CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
 
 # ---------------------------------------------------------
@@ -129,6 +134,9 @@ def salva_configurazione_mondo():
 
 # 🎭 MOTORE DI RECITAZIONE TEATRALE DI GEMINI
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
+    if not LIBRERIA_OK:
+        return "⚠️️ Errore: Manca la libreria `google-generativeai` nel file requirements.txt!"
+
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
     
@@ -177,9 +185,9 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
             return response.text.strip()
 
     except Exception as e_generale:
-        return f"⚠️ Errore di connessione: {e_generale}"
+        return f"⚠️ Errore API: {e_generale}"
 
-    return "⚠️ Errore: Impossibile connettersi a Gemini. Controlla che la chiave inizi con AIzaSy!"
+    return "⚠️ Errore: Impossibile connettersi a Gemini. Verificare la chiave API alla riga 21!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -284,20 +292,20 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 CHARACTER'S LAB
+# 🚪 CHARACTER'S LAB (PANNELLO DI VERIFICA)
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
         st.header("🎭 CHARACTER'S LAB")
         st.caption("Pannello di controllo degli Agenti AI!")
 
-        if CHIAVE_PULITA.startswith("AIzaSy"):
-            st.success("🔒 Chiave API corretta e attiva nel codice!")
+        if CHIAVE_PULITA and "INCOLLA_QUI" not in CHIAVE_PULITA:
+            st.success("🟢 Spia Verde: La chiave nuova è caricata nel codice!")
         else:
-            st.error("❌ Manca la chiave vera che inizia con AIzaSy alla riga 13 del file app.py!")
+            st.error("🔴 Spia Rossa: Incolla la nuova chiave alla riga 21 di app.py!")
 
         st.divider()
-        st.subheader("🖼️️ Agenti in Fila")
+        st.subheader("🖼️ Agenti in Fila")
 
         for id_agent, info_agent in config['agents'].items():
             col_fig_foto, col_fig_nome = st.columns([1, 2])
@@ -546,7 +554,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.error("🔑 Manca la nuova chiave API che inizia con AIzaSy alla riga 13 di app.py!")
+                            st.error("🔑 Incolla la tua nuova chiave alla riga 21 del file app.py!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
