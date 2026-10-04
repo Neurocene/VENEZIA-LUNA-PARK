@@ -1,6 +1,6 @@
 import time
 
-# 🚌 1. IL DIARIO DEGLI EVENTI
+# 🚌 1. IL DIARIO SEGRETO DELLE AZIONI (EVENT BUS)
 class EventBus:
     def __init__(self):
         self.eventi = []
@@ -18,7 +18,7 @@ class EventBus:
         self.eventi.append(nuovo_fatto)
         return nuovo_fatto
 
-# 🎬 2. IL REGISTA INVISIBILE
+# 🎬 2. IL REGISTA INVISIBILE (STORY FACTORY)
 class StoryFactory:
     def __init__(self, event_bus):
         self.bus = event_bus
@@ -27,11 +27,11 @@ class StoryFactory:
         suggerimento = ""
         if "vhs_brago" in inventario_giocatore and personaggio_presente == "rosko":
             suggerimento = (
-                "NOTIZIA EXTRA: Hai notato che il giocatore ha in tasca la cassetta VHS "
+                "NOTIZIA EXTRA PER TE: Hai notato che il giocatore ha in tasca la cassetta VHS "
                 "del tuo nemico Brago! Chiedigli spiegazioni con sospetto."
             )
         return suggerimento
 
-# 👮‍♂️ 3. IL GIUDICE DELLE REGOLE
+# 👮‍♂️ 3. IL CONTROLLORE DELLE REGOLE (RULE VALIDATOR)
 def valida_azione(personaggio, posizione_personaggio, posizione_giocatore):
     return posizione_personaggio == posizione_giocatore
