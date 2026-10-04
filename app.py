@@ -7,13 +7,12 @@ import streamlit as st
 import engine
 from google import genai
 
-# 🎬 IMPORTIAMO LA STORY FACTORY
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
-# 🔑 LA TUA CHIAVE API SCRITTA DIRETTAMENTE NEL CODICE!
+# 🔐 LA TUA CHIAVE NASCOSTA DENTRO IL CODICE!
 # ---------------------------------------------------------
-CHIAVE_API_DIRETTA = "AQ.Ab8RN6L8Z0zNXjLqy5Gxjn7v2SAKURMBIoW_1uzivlsaPoJeBA"  # <-- Metti la tua chiave qui dentro le virgolette!
+CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6L8Z0zNXjLqy5Gxjn7v2SAKURMBIoW_1uzivlsaPoJeBA"  # <-- Metti qui la chiave tra le virgolette!
 
 # ---------------------------------------------------------
 # 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
@@ -39,7 +38,7 @@ if "event_bus" not in st.session_state:
 if "story_factory" not in st.session_state:
     st.session_state.story_factory = StoryFactory(st.session_state.event_bus)
 
-# 📖 CANNOCCHIALE PER LEGGERE LA BIO DEI PERSONAGGI
+# 📖 LEGGERE LA BIO DAI FILE IN DATA/
 def carica_bio_personaggio(id_personaggio, bio_default=""):
     nomi_da_provare = [
         f"{id_personaggio}.txt",
@@ -54,7 +53,7 @@ def carica_bio_personaggio(id_personaggio, bio_default=""):
                 return f.read()
     return bio_default
 
-# 📖 LEGGERE LA BIBBIA DEL MONDO (data/bibbia.txt)
+# 📖 LEGGERE LA BIBBIA DEL MONDO
 def carica_bibbia_mondo():
     percorso_bibbia = os.path.join("data", "bibbia.txt")
     if os.path.exists(percorso_bibbia):
@@ -125,7 +124,7 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🎭 MOTORE DI RECITAZIONE GEMINI SUPER CREATIVO
+# 🎭 MOTORE DI RECITAZIONE TEATRALE DI GEMINI
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
@@ -143,38 +142,17 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     )
 
     istruzioni_sistema = f"""
-    ****************------------------------------------------------------
-    REGOLE DI RECITAZIONE TEATRALE (IMMERSIONE AL 100%):
-    - Tu sei l'attore che interpreta {nome_personaggio}. Vivi davvero a Venezia!
-    - Dimentica di essere un'AI, un robot o un assistente virtuale.
-    - NON ripetere mai la stessa frase o il saluto iniziale!
-    - Rispondi sempre in modo spontaneo, dinamico e umano.
-    ****************------------------------------------------------------
+    Tu sei l'attore che interpreta {nome_personaggio}. Vivi davvero a Venezia Luna Park!
+    Non sei un'AI o un robot. NON ripetere mai la stessa frase.
+    Rispondi sempre in italiano in modo breve e d'impatto (2-3 frasi al massimo).
     
-    ⏰ TEMPO CORRENTE NEL GIOCO: Ora {ora_narrativa} di 72 (Giorno {(ora_narrativa // 24) + 1}).
-    
-    📜 LA BIBBIA DEL MONDO:
-    {testo_bibbia}
-    
-    🎭 SCHEDA DEL PERSONAGGIO (IN DATA/):
-    {bio_effettiva}
-    
-    🎯 IL TUO OBIETTIVO SEGRETO NELLE 72 ORE:
-    {missione_72h}
-    
-    ⚙️ MOTORE DECISIONALE:
-    {motore_dec}
-    
-    📓 I TUOI RICORDI RECENTI:
-    {diario_p}
-    
-    🎬 SUGGERIMENTO DELLA SCENA (STORY FACTORY):
-    {suggerimento_regista}
-    
-    REGOLE DI DIALOGO:
-    1. Rispondi continuando il discorso iniziato dal giocatore.
-    2. Rispondi in italiano in modo breve e d'impatto (2-3 frasi al massimo).
-    3. Fai avanzare la storia con una domanda o una reazione!
+    ⏰ Ora nel gioco: {ora_narrativa}/72.
+    📜 Mondo: {testo_bibbia}
+    🎭 Chi sei tu: {bio_effettiva}
+    🎯 Il tuo obiettivo segreto: {missione_72h}
+    ⚙️ Motore decisionale: {motore_dec}
+    📓 Ricordi recenti: {diario_p}
+    🎬 Regista: {suggerimento_regista}
     """
     
     testo_cronologia = ""
@@ -182,33 +160,28 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
         ruolo = "Giocatore" if msg["role"] == "user" else nome_personaggio
         testo_cronologia += f"{ruolo}: {msg['content']}\n"
         
-    prompt_completo = f"{istruzioni_sistema}\n\n[Conversazione avvenuta finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitando:"
+    prompt_completo = f"{istruzioni_sistema}\n\n[Chat finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio} risponde recitando:"
     
     try:
         client = genai.Client(api_key=api_key)
-        modelli_da_provare = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+        modelli = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
         
-        for mod in modelli_da_provare:
+        for mod in modelli:
             try:
                 response = client.models.generate_content(
                     model=mod,
                     contents=prompt_completo,
-                    config={
-                        "temperature": 0.95,
-                        "top_p": 0.95
-                    }
+                    config={"temperature": 0.95, "top_p": 0.95}
                 )
                 if response and hasattr(response, 'text') and response.text:
-                    testo_pulito = response.text.strip()
-                    if testo_pulito:
-                        return testo_pulito
+                    return response.text.strip()
             except Exception:
                 continue
 
     except Exception as e_generale:
-        st.error(f"⚠️ Errore API: {e_generale}")
+        return f"⚠️ Errore di connessione con Gemini: {e_generale}"
 
-    return f"⚠️ [ERRORE CHIAVE GEMINI] {nome_personaggio} non riesce a sentire la tua voce! Verificare la Chiave API inserita nel codice o nel Character's Lab."
+    return "⚠️ Errore: Impossibile parlare con Gemini. Controlla che la chiave nella riga 13 del codice sia corretta!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -313,19 +286,24 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 CHARACTER'S LAB
+# 🚪 CHARACTER'S LAB (PANNELLO SENZA MOSTRARE LA CHIAVE!)
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
         st.header("🎭 CHARACTER'S LAB")
         st.caption("Pannello di controllo degli Agenti AI!")
 
-        if "gemini_key_utente" not in st.session_state:
-            st.session_state.gemini_key_utente = CHIAVE_API_DIRETTA
-
-        chiave_input = st.text_input("🔑 Chiave API Gemini attiva:", value=st.session_state.gemini_key_utente, type="password")
-        if chiave_input:
-            st.session_state.gemini_key_utente = chiave_input.strip()
+        # MESSAGGIO DI CONFERMA PER DIRE CHE LA CHIAVE C'È ED È NASCOSTA
+        if CHIAVE_SEGRETA_NASCOSTA and "INCOLLA_QUI" not in CHIAVE_SEGRETA_NASCOSTA:
+            st.success("🔒 Chiave API attiva nel codice!")
+        else:
+            try:
+                if st.secrets.get("GEMINI_API_KEY", ""):
+                    st.success("🔒 Chiave API letta dai Secrets!")
+                else:
+                    st.warning("⚠️ Manca la Chiave API nel codice (riga 13)!")
+            except Exception:
+                st.warning("⚠️ Manca la Chiave API nel codice (riga 13)!")
 
         st.divider()
         st.subheader("🖼️ Agenti in Fila")
@@ -551,19 +529,16 @@ with tab_gioca:
                 
                 if col_btn1.button("💬 Parla con l'Agente", key=f"send_{ag_id_trovato}", use_container_width=True):
                     if frase_utente.strip():
-                        # ORDINE DI CONTROLLO CHIAVE: 1. Codice Diretto -> 2. Secrets -> 3. Interface Input
-                        gemini_key = CHIAVE_API_DIRETTA.strip()
+                        # PRENDIAMO LA CHIAVE NASCOSTA RIGA 13, OPPURE DAI SECRETS
+                        gemini_key = CHIAVE_SEGRETA_NASCOSTA.strip()
                         
-                        if not gemini_key or gemini_key == "INCOLLA_QUI_LA_TUA_CHIAVE_API":
+                        if not gemini_key or "INCOLLA_QUI" in gemini_key:
                             try:
-                                gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+                                gemini_key = st.secrets.get("GEMINI_API_KEY", "").strip()
                             except Exception:
                                 gemini_key = ""
 
-                        if not gemini_key:
-                            gemini_key = st.session_state.get("gemini_key_utente", "")
-                        
-                        if gemini_key and gemini_key != "INCOLLA_QUI_LA_TUA_CHIAVE_API":
+                        if gemini_key and "INCOLLA_QUI" not in gemini_key:
                             st.session_state.chat_history[ag_id_trovato].append({"role": "user", "content": frase_utente})
                             st.session_state.event_bus.registra_evento("parla", "Giocatore", ag_nome, frase_utente)
                             
@@ -581,7 +556,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.error("🔑 Manca la chiave API! Incolla la tua chiave vera nella riga 14 del codice app.py!")
+                            st.error("🔑 Manca la chiave API! Incolla la tua chiave vera alla riga 13 del file app.py!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
