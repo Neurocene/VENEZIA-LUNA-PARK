@@ -18,7 +18,7 @@ from story_factory import EventBus, StoryFactory, valida_azione
 # ---------------------------------------------------------
 # 🔑 CHIAVE API PREDEFINITA NEL CODICE (OPZIONALE)
 # ---------------------------------------------------------
-CHIAVE_NEL_CODICE = "INCOLLA_QUI_LA_TUA_CHIAVE_SE_VUOI"
+CHIAVE_NEL_CODICE = "AQ.Ab8RN6JixeflX6j1QiG60LPuKbqpbOnnMaluDaPFu4p9Gd1dbQ"
 
 # ---------------------------------------------------------
 # 1. IL NOSTRO CANTIERE LEGO (CONFIGURAZIONE APP)
