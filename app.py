@@ -5,20 +5,14 @@ import time
 import random
 import streamlit as st
 import engine
-
-# 🛠️ CARICHIAMO IL CERVELLO DI GOOGLE
-try:
-    import google.generativeai as genai
-    LIBRERIA_OK = True
-except ImportError:
-    LIBRERIA_OK = False
+from google import genai
 
 from story_factory import EventBus, StoryFactory, valida_azione
 
 # ---------------------------------------------------------
-# 🔑 INCOLLA LA TUA NUOVA CHIAVE API QUI SOTTO!
+# 🔑 INCOLLA LA TUA NUOVA CHIAVE API GEMINI QUI SOTTO!
 # ---------------------------------------------------------
-CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6JixeflX6j1QiG60LPuKbqpbOnnMaluDaPFu4p9Gd1dbQ"  # <-- Metti qui la tua chiave nuova!
+CHIAVE_SEGRETA_NASCOSTA = "AQ.Ab8RN6JixeflX6j1QiG60LPuKbqpbOnnMaluDaPFu4p9Gd1dbQ"  # <-- Metti qui la tua chiave!
 
 CHIAVE_PULITA = CHIAVE_SEGRETA_NASCOSTA.strip()
 
@@ -132,11 +126,8 @@ def salva_configurazione_mondo():
     with open("data/world.json", "w", encoding="utf-8") as f_out:
         json.dump(config, f_out, indent=2, ensure_ascii=False)
 
-# 🎭 MOTORE DI RECITAZIONE TEATRALE DI GEMINI
+# 🎭 MOTORE DI RECITAZIONE TEATRALE GEMINI (CON LA NUOVA LIBRERIA GOOGLE-GENAI)
 def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fallback, messaggio_giocatore, ora_narrativa, cronologia_chat=[]):
-    if not LIBRERIA_OK:
-        return "⚠️️ Errore: Manca la libreria `google-generativeai` nel file requirements.txt!"
-
     testo_bibbia = carica_bibbia_mondo()
     bio_effettiva = carica_bio_personaggio(id_personaggio, bio_fallback)
     
@@ -174,20 +165,21 @@ def fai_parlare_agente_gemini(api_key, nome_personaggio, id_personaggio, bio_fal
     prompt_completo = f"{istruzioni_sistema}\n\n[Chat finora]:\n{testo_cronologia}\nGiocatore dice: '{messaggio_giocatore}'\n{nome_personaggio}:"
     
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Inizializziamo il client ufficiale di Google
+        client = genai.Client(api_key=api_key)
         
-        response = model.generate_content(
-            prompt_completo,
-            generation_config={"temperature": 0.9}
+        # Usiamo il modello Flash 2.5 supportato nativamente
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt_completo,
         )
-        if response and response.text:
+        if response and hasattr(response, 'text') and response.text:
             return response.text.strip()
 
     except Exception as e_generale:
         return f"⚠️ Errore API: {e_generale}"
 
-    return "⚠️ Errore: Impossibile connettersi a Gemini. Verificare la chiave API alla riga 21!"
+    return "⚠️ Errore: Impossibile connettersi a Gemini. Verificare la chiave API alla riga 14!"
 
 # SFONDO IN COPERTINA
 def imposta_sfondo_copertina():
@@ -292,7 +284,7 @@ if col5.button("⏸ Pausa" if not s['paused'] else "▶ Gioca"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 🚪 CHARACTER'S LAB (PANNELLO DI VERIFICA)
+# 🚪 CHARACTER'S LAB
 # ---------------------------------------------------------
 if st.session_state.mostra_lab:
     with st.sidebar:
@@ -302,7 +294,7 @@ if st.session_state.mostra_lab:
         if CHIAVE_PULITA and "INCOLLA_QUI" not in CHIAVE_PULITA:
             st.success("🟢 Spia Verde: La chiave nuova è caricata nel codice!")
         else:
-            st.error("🔴 Spia Rossa: Incolla la nuova chiave alla riga 21 di app.py!")
+            st.error("🔴 Spia Rossa: Incolla la nuova chiave alla riga 14 di app.py!")
 
         st.divider()
         st.subheader("🖼️ Agenti in Fila")
@@ -554,7 +546,7 @@ with tab_gioca:
                                 s['trust'][ag_id_trovato] = min(100, s['trust'].get(ag_id_trovato, 50) + 10)
                                 st.rerun()
                         else:
-                            st.error("🔑 Incolla la tua nuova chiave alla riga 21 del file app.py!")
+                            st.error("🔑 Incolla la tua nuova chiave alla riga 14 del file app.py!")
 
                 if ag_id_trovato == "lizzie":
                     if col_btn2.button("💌 PROVA AD ENTRARE AL LIZZIE BAR!", key="win_lizzie_btn", use_container_width=True):
