@@ -8,7 +8,7 @@ from google import genai
 from story_factory import EventBus, StoryFactory
 
 # ---------------------------------------------------------
-# 1. CONFIGURAZIONE STREAMLIT
+# 1. CONFIGURAZIONE BASE DEL GIOCO
 # ---------------------------------------------------------
 st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
 
@@ -29,6 +29,8 @@ def mostra_foto(nome, didascalia=""):
     percorso = trova_foto(nome)
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
+    else:
+        st.info(f"🖼️ [Immagine mancante: Metti {nome}.png dentro la cartella assets/]")
 
 def riproduci_video(nome):
     for est in [".mp4", ".MP4"]:
@@ -63,11 +65,39 @@ def carica_mondo():
 
 config = carica_mondo()
 
+# Lettura della chiave API
 def ottieni_api_key():
     try:
         return st.secrets.get("GEMINI_API_KEY", "").strip()
     except Exception:
         return st.session_state.get("gemini_key_manuale", "").strip()
+
+# Funzione universale per far parlare l'AI
+def genera_risposta_ai(ag_nome, frase_giocatore):
+    api_k = ottieni_api_key()
+    if not api_k:
+        return "«Non posso parlare ora: incolla la tua chiave API Gemini prima!»"
+    
+    try:
+        client = genai.Client(api_key=api_k)
+        info_ricordi = json.dumps(st.session_state.player_profile, ensure_ascii=False)
+        prompt = (
+            f"Tu sei {ag_nome} nel gioco Venezia Luna Park.\n"
+            f"I ricordi che il giocatore ti ha raccontato sono: {info_ricordi}.\n"
+            f"Rispondi in italiano brevemente (max 2-3 frasi), rimanendo nel tuo personaggio.\n"
+            f"Il giocatore dice: '{frase_giocatore}'"
+        )
+        modelli = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+        for mod in modelli:
+            try:
+                resp = client.models.generate_content(model=mod, contents=prompt)
+                if resp and hasattr(resp, 'text') and resp.text:
+                    return resp.text.strip()
+            except Exception:
+                continue
+        return "⚠️ Errore di connessione ai modelli Gemini."
+    except Exception as e:
+        return f"⚠️ Errore AI: {e}"
 
 # ---------------------------------------------------------
 # STAGE 1: INGRESSO CON PASSWORD
@@ -92,7 +122,7 @@ if st.session_state.stage == "video_1":
     st.title("🎬 Inizio del Viaggio")
     v_ok = riproduci_video("intro_1")
     if not v_ok:
-        st.info("ℹ️ Video `assets/intro_1.mp4` non trovato. Clicca il tasto sotto per proseguire!")
+        st.info("ℹ️ Video `assets/intro_1.mp4` non trovato. Clicca sotto per proseguire!")
 
     if st.button("▶ VAI AL QUESTIONARIO DEI RICORDI", use_container_width=True):
         st.session_state.stage = "questionnaire"
@@ -126,7 +156,7 @@ if st.session_state.stage == "questionnaire":
         if inviato:
             st.session_state.player_profile = risposte
             st.session_state.event_bus.registra_evento(
-                "profilo_ricordi", "Sistema", "Protagonista", json.dumps(risposte), importanza=0.9
+                "profilo_ricordi", "Sistema", "Protagonista", json.dumps(risposte, ensure_ascii=False), importanza=0.9
             )
             st.session_state.stage = "video_2"
             st.rerun()
@@ -139,7 +169,7 @@ if st.session_state.stage == "video_2":
     st.title("🎬 L'Arrivo a Venezia")
     v_ok = riproduci_video("intro_2")
     if not v_ok:
-        st.info("ℹ️ Video `assets/intro_2.mp4` non trovato. Clicca il tasto sotto per entrare!")
+        st.info("ℹ️ Video `assets/intro_2.mp4` non trovato. Clicca sotto per entrare!")
 
     if st.button("🏰 ENTRA A VENEZIA", use_container_width=True):
         st.session_state.stage = "game"
@@ -158,6 +188,9 @@ engine.timer(s, config)
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = {}
 
+if "lab_chat_history" not in st.session_state:
+    st.session_state.lab_chat_history = {}
+
 tab_gioca, tab_lab, tab_diagnostica = st.tabs(["🎮 Gioca & Esplora", "🎭 Character's Lab", "🔍 Diagnostica"])
 
 # --- TAB 1: GIOCA & ESPLORA ---
@@ -166,7 +199,7 @@ with tab_gioca:
     
     mostra_foto("mappa_venezia", "Mappa di Venezia")
     
-    # Bottoni per cambiare quartiere
+    # Bottoni dei quartieri
     cols = st.columns(len(config['zones']))
     for i, z_key in enumerate(config['zones'].keys()):
         if cols[i].button(f"📍 {config['zones'][z_key]['name']}", key=f"nav_{z_key}"):
@@ -175,7 +208,7 @@ with tab_gioca:
             
     st.divider()
     
-    # Personaggio del quartiere
+    # Personaggio nel quartiere
     ag_id = config['zones'][s['location']].get('owner', 'brago')
     ag_nome = config['agents'].get(ag_id, {}).get('name', 'Brago')
     
@@ -199,33 +232,57 @@ with tab_gioca:
         frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"chat_{ag_id}")
         if st.button("💬 Invia Messaggio", key=f"btn_id_{ag_id}"):
             if frase.strip():
-                api_k = ottieni_api_key()
                 st.session_state.chat_history[ag_id].append({"role": "user", "content": frase})
-                
-                if api_k:
-                    try:
-                        client = genai.Client(api_key=api_k)
-                        
-                        # Il personaggio conosce i ricordi del giocatore!
-                        info_ricordi = json.dumps(st.session_state.player_profile, ensure_ascii=False)
-                        prompt = f"Tu sei {ag_nome} a Venezia Luna Park. Il giocatore ha questi ricordi del passato: {info_ricordi}. Rispondi in modo breve e misterioso in italiano a: '{frase}'"
-                        
-                        resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-                        testo_risposta = resp.text.strip()
-                    except Exception as e:
-                        testo_risposta = f"⚠️ Errore AI: {e}"
-                else:
-                    testo_risposta = f"«Non posso parlare ora (Incolla la tua chiave Gemini nel Character's Lab!).»"
-                    
-                st.session_state.chat_history[ag_id].append({"role": "assistant", "content": testo_risposta})
+                risp_ai = genera_risposta_ai(ag_nome, frase)
+                st.session_state.chat_history[ag_id].append({"role": "assistant", "content": risp_ai})
                 st.rerun()
 
 # --- TAB 2: CHARACTER'S LAB ---
 with tab_lab:
-    st.header("🎭 Character's Lab")
-    st.text_input("🔑 Incolla la tua Chiave API Gemini qui se serve:", key="gemini_key_manuale", type="password")
-    st.subheader("👥 Schede dei Personaggi")
-    st.json(config['agents'])
+    st.header("🎭 Character's Lab — Laboratorio degli Agenti")
+    st.text_input("🔑 Incolla qui la tua Chiave API Gemini (che inizia con AIzaSy...):", key="gemini_key_manuale", type="password")
+    
+    if ottieni_api_key().startswith("AIzaSy"):
+        st.success("🟢 Spia Verde: La chiave API è caricata e pronta!")
+    else:
+        st.warning("🟡 Attenzione: Incolla la tua chiave API qui sopra per attivare l'IA!")
+        
+    st.divider()
+    st.subheader("👥 Scegli un Agente da Testare o Modificare")
+    
+    lista_agenti = list(config['agents'].keys())
+    sel_agent_id = st.selectbox("Seleziona personaggio:", lista_agenti, format_func=lambda x: config['agents'][m_x := x]['name'])
+    
+    if sel_agent_id:
+        p_dati = config['agents'][sel_agent_id]
+        p_nome = p_dati['name']
+        
+        col_lab_left, col_lab_right = st.columns([1, 1])
+        
+        with col_lab_left:
+            st.markdown(f"### 🖼️ Scheda di {p_nome}")
+            mostra_foto(sel_agent_id, f"Foto di {p_nome}")
+            st.write(f"**Location Base:** {p_dati.get('location', 'Sconosciuta')}")
+            st.write(f"**Biografia:** {p_dati.get('biography', 'Nessuna biografia.')}")
+            
+        with col_lab_right:
+            st.markdown(f"### 💬 Prova di Dialogo Diretto con {p_nome}")
+            
+            if sel_agent_id not in st.session_state.lab_chat_history:
+                st.session_state.lab_chat_history[sel_agent_id] = []
+                
+            box_lab_chat = st.container(height=250)
+            with box_lab_chat:
+                for m in st.session_state.lab_chat_history[sel_agent_id]:
+                    st.chat_message(m["role"]).write(m["content"])
+                    
+            msg_lab = st.text_input(f"Fai una domanda di prova a {p_nome}:", key=f"lab_input_{sel_agent_id}")
+            if st.button("⚡ Test Risposta AI", key=f"lab_btn_{sel_agent_id}"):
+                if msg_lab.strip():
+                    st.session_state.lab_chat_history[sel_agent_id].append({"role": "user", "content": msg_lab})
+                    risp_test = genera_risposta_ai(p_nome, msg_lab)
+                    st.session_state.lab_chat_history[sel_agent_id].append({"role": "assistant", "content": risp_test})
+                    st.rerun()
 
 # --- TAB 3: DIAGNOSTICA ---
 with tab_diagnostica:
