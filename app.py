@@ -16,7 +16,7 @@ os.makedirs("assets", exist_ok=True)
 os.makedirs("data", exist_ok=True)
 
 # ---------------------------------------------------------
-# 2. FUNZIONI PER FOTO, PALAZZI E VIDEO MOOD 🎬
+# 2. FUNZIONI PER FOTO E VIDEO AUTOMATICI
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -30,7 +30,7 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
     else:
-        st.info(f"🖼️ [Immagine mancante: Metti {nome}.png dentro la cartella assets/]")
+        st.info(f"🖼️️ [Manca la foto {nome}.png dentro assets/]")
 
 def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
     nome_file_palazzo = f"{id_personaggio}_palace"
@@ -38,24 +38,24 @@ def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
     if percorso:
         st.image(percorso, caption=f"🏰 Palazzo di {nome_personaggio}", use_container_width=True)
     else:
-        st.caption(f"🏚️ [Foto Palazzo mancante: carica {id_personaggio}_palace.jpg in assets/]")
+        st.caption(f"🏚️ [Manca la foto del palazzo {id_personaggio}_palace.jpg in assets/]")
 
-# 🎬 NUOVA FUNZIONE PER IL VIDEO MOOD SOPRA IL PERSONAGGIO!
-def mostra_video_mood(id_personaggio, nome_personaggio):
-    # Cerchiamo sia id_talk.mp4 che id.talk.mp4 per sicurezza!
+# 🎬 VIDEO CHE PARLA (SOPRA LA CHAT)
+def mostra_video_talk(id_personaggio, nome_personaggio):
+    # Cerca sia id_talk.mp4 che id.talk.mp4
     nomi_da_provare = [f"{id_personaggio}_talk", f"{id_personaggio}.talk"]
-    for nome_file in nomi_da_provare:
+    for nome_f in nomi_da_provare:
         for est in [".mp4", ".MP4"]:
-            percorso = os.path.join("assets", f"{nome_file}{est}")
+            percorso = os.path.join("assets", f"{nome_f}{est}")
             if os.path.exists(percorso):
                 try:
-                    st.caption(f"🎬 Mood di {nome_personaggio}")
+                    st.caption(f"🎬 {nome_personaggio} ti sta parlando:")
                     st.video(percorso)
                     return True
                 except Exception as e:
-                    st.warning(f"⚠️ Errore video mood: {e}")
+                    st.warning(f"⚠️ Errore video: {e}")
                     return False
-    st.caption(f"🎥 [Video Mood mancante: carica {id_personaggio}_talk.mp4 in assets/]")
+    st.info(f"🎥 [Per vedere il video qui sopra, carica il file {id_personaggio}_talk.mp4 nella cartella assets/]")
     return False
 
 def riproduci_video_generico(nome):
@@ -71,7 +71,7 @@ def riproduci_video_generico(nome):
     return False
 
 # ---------------------------------------------------------
-# 3. GESTIONE STAGE E STATO
+# 3. GESTIONE STATO DEL GIOCO
 # ---------------------------------------------------------
 if "stage" not in st.session_state:
     st.session_state.stage = "login"
@@ -235,53 +235,60 @@ tab_gioca, tab_lab, tab_diagnostica = st.tabs(["🎮 Gioca & Esplora", "🎭 Cha
 
 # --- TAB 1: GIOCA & ESPLORA ---
 with tab_gioca:
-    st.subheader(f"🏰 Posizione Attuale: {config['zones'][s['location']]['name']}")
-    mostra_foto("mappa_venezia", "Mappa di Venezia")
-    
-    cols = st.columns(len(config['zones']))
-    for i, z_key in enumerate(config['zones'].keys()):
-        if cols[i].button(f"📍 {config['zones'][z_key]['name']}", key=f"nav_{z_key}"):
-            s['location'] = z_key
-            st.rerun()
-            
-    st.divider()
-    
+    # Determiniamo il personaggio presente nella zona attuale
     ag_id = config['zones'][s['location']].get('owner', 'rosko')
     if ag_id == "brago":
         ag_id = "rosko"
         
     ag_nome = config['agents'].get(ag_id, {}).get('name', 'Rosko')
     
-    col_foto, col_chat = st.columns([1, 2])
+    st.markdown(f"## 👤 Incontro con {ag_nome} ({config['zones'][s['location']]['name']})")
     
-    with col_foto:
-        # 1. 🎬 VIDEO MOOD PROPRIO IN ALTO PRIMA DI TUTTO!
-        mostra_video_mood(ag_id, ag_nome)
-        
-        # 2. Foto Faccia Personaggio
-        mostra_foto(ag_id, f"Faccia di {ag_nome}")
-        
-        # 3. Foto Palazzo
-        mostra_palazzo_personaggio(ag_id, ag_nome)
+    # 🎬 1. VIDEO TALK DEL PERSONAGGIO (PROPRIO IN ALTO SOPRA LA CHAT!)
+    mostra_video_talk(ag_id, ag_nome)
     
-    with col_chat:
-        st.markdown(f"### 💬 Parlando con {ag_nome}")
-        
-        if ag_id not in st.session_state.chat_history:
-            st.session_state.chat_history[ag_id] = []
+    st.divider()
 
-        container_chat = st.container(height=300)
-        with container_chat:
-            for msg in st.session_state.chat_history[ag_id]:
-                st.chat_message(msg["role"]).write(msg["content"])
-            
-        frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"chat_{ag_id}")
-        if st.button("💬 Invia Messaggio", key=f"btn_id_{ag_id}"):
-            if frase.strip():
-                st.session_state.chat_history[ag_id].append({"role": "user", "content": frase})
-                risp_ai = genera_risposta_ai(ag_nome, frase)
-                st.session_state.chat_history[ag_id].append({"role": "assistant", "content": risp_ai})
-                st.rerun()
+    # 💬 2. LA CHAT CON IL PROTAGONISTA
+    st.markdown(f"### 💬 Chat con {ag_nome}")
+    if ag_id not in st.session_state.chat_history:
+        st.session_state.chat_history[ag_id] = []
+
+    container_chat = st.container(height=280)
+    with container_chat:
+        for msg in st.session_state.chat_history[ag_id]:
+            st.chat_message(msg["role"]).write(msg["content"])
+        
+    frase = st.text_input(f"Cosa rispondi a {ag_nome}?:", key=f"chat_{ag_id}")
+    if st.button("💬 Invia Messaggio", key=f"btn_id_{ag_id}"):
+        if frase.strip():
+            st.session_state.chat_history[ag_id].append({"role": "user", "content": frase})
+            risp_ai = genera_risposta_ai(ag_nome, frase)
+            st.session_state.chat_history[ag_id].append({"role": "assistant", "content": risp_ai})
+            st.rerun()
+
+    st.divider()
+
+    # 🏰 3. SOTTO LA CHAT: LE FOTO DEL PERSONAGGIO E DEL SUO PALAZZO
+    st.markdown("### 🖼️ Dettagli del Luogo e del Personaggio")
+    col_facia, col_palazzo = st.columns(2)
+    with col_facia:
+        mostra_foto(ag_id, f"Faccia di {ag_nome}")
+    with col_palazzo:
+        mostra_palazzo_personaggio(ag_id, ag_nome)
+
+    st.divider()
+
+    # 🗺️ 4. IN BASSO: LA MAPPA DI VENEZIA CON LE LOCATION DA VISITARE
+    st.markdown("### 🗺️ Mappa di Venezia — Prossime Location da Visitare")
+    mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
+    
+    st.caption("🧭 Scegli quale quartiere esplorare dopo questo incontro:")
+    cols = st.columns(len(config['zones']))
+    for i, z_key in enumerate(config['zones'].keys()):
+        if cols[i].button(f"📍 {config['zones'][z_key]['name']}", key=f"nav_{z_key}", use_container_width=True):
+            s['location'] = z_key
+            st.rerun()
 
 # --- TAB 2: CHARACTER'S LAB ---
 with tab_lab:
@@ -303,7 +310,7 @@ with tab_lab:
                 st.warning("🟡 La casella è vuota! Incolla prima una chiave.")
                 st.session_state.chiave_verificata_ok = False
             else:
-                with st.spinner("🕵️‍♂️ Prova di connessione in corso..."):
+                with st.spinner("🕵️‍♂️️ Prova di connessione in corso..."):
                     try:
                         client_test = genai.Client(api_key=chiave_p)
                         test_resp = client_test.models.generate_content(
@@ -340,8 +347,7 @@ with tab_lab:
         
         with col_lab_left:
             st.markdown(f"### 🖼️ Scheda di {p_nome}")
-            # Video Mood in alto nel Lab!
-            mostra_video_mood(sel_agent_id, p_nome)
+            mostra_video_talk(sel_agent_id, p_nome)
             mostra_foto(sel_agent_id, f"Faccia di {p_nome}")
             mostra_palazzo_personaggio(sel_agent_id, p_nome)
             
