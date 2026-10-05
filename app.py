@@ -80,17 +80,17 @@ def imposta_copertina():
     if not p:
         return
     encoded = base64.b64encode(p.read_bytes()).decode()
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image:
-                linear-gradient(rgba(5,8,12,.20), rgba(5,8,12,.82)),
-                url("data:image/png;base64,{encoded}");
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }}
-        .block-container {{ padding-top: 58vh; }}
-        header {{ visibility: hidden; }}
-        </style>
+    css = (
+        "<style>"
+        ".stApp {"
+        "background-image:"
+        "linear-gradient(rgba(5,8,12,.20), rgba(5,8,12,.82)),"
+        "url('data:image/png;base64," + encoded + "');"
+        "background-size:cover;"
+        "background-position:center;"
+        "background-attachment:fixed;"
+        "}"
+        ".block-container {padding-top:58vh;}"
+        "header {visibility:hidden;}"
+        "</style>"
+    )
