@@ -181,7 +181,6 @@ if st.session_state.stage == "questionnaire":
     st.title("🎬 Messaggio di Brago & 📋 Domande sul tuo Passato")
     st.caption("Guarda il video di Brago e poi rispondi alle domande per scoprire chi sei...")
     
-    # 🎬 VIDEO DI BRAGO MOSTRATO SOPRA IL QUESTIONARIO!
     v_brago_ok = riproduci_video_generico("brago_video")
     if not v_brago_ok:
         st.info("ℹ️ Per vedere il video di Brago qui in alto, carica il file `brago_video.mp4` nella cartella `assets/`!")
@@ -211,4 +210,168 @@ if st.session_state.stage == "questionnaire":
                 "profilo_ricordi", "Sistema", "Protagonista", json.dumps(risposte, ensure_ascii=False), importanza=0.9
             )
             st.session_state.stage = "video_2"
-            st.rerun
+            st.rerun()
+    st.stop()
+
+# ---------------------------------------------------------
+# STAGE 4: SECONDO VIDEO (intro_2.mp4)
+# ---------------------------------------------------------
+if st.session_state.stage == "video_2":
+    st.title("🎬 L'Arrivo a Venezia")
+    v_ok = riproduci_video_generico("intro_2")
+    if not v_ok:
+        st.info("ℹ️ Video `assets/intro_2.mp4` non trovato. Clicca sotto per entrare!")
+
+    if st.button("🏰 ENTRA A VENEZIA", use_container_width=True):
+        st.session_state.stage = "game"
+        st.rerun()
+    st.stop()
+
+# ---------------------------------------------------------
+# STAGE 5: IL GIOCO VERO E PROPRIO
+# ---------------------------------------------------------
+if "game_state" not in st.session_state:
+    st.session_state.game_state = engine.new_game(config)
+
+s = st.session_state.game_state
+engine.timer(s, config)
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = {}
+
+if "lab_chat_history" not in st.session_state:
+    st.session_state.lab_chat_history = {}
+
+tab_gioca, tab_lab, tab_diagnostica = st.tabs(["🎮 Gioca & Esplora", "🎭 Character's Lab", "🔍 Diagnostica"])
+
+# --- TAB 1: GIOCA & ESPLORA ---
+with tab_gioca:
+    st.subheader(f"🏰 Posizione Attuale: {config['zones'][s['location']]['name']}")
+    mostra_foto("mappa_venezia", "Mappa di Venezia")
+    
+    cols = st.columns(len(config['zones']))
+    for i, z_key in enumerate(config['zones'].keys()):
+        if cols[i].button(f"📍 {config['zones'][z_key]['name']}", key=f"nav_{z_key}"):
+            s['location'] = z_key
+            st.rerun()
+            
+    st.divider()
+    
+    ag_id = config['zones'][s['location']].get('owner', 'brago')
+    ag_nome = config['agents'].get(ag_id, {}).get('name', 'Brago')
+    
+    col_foto, col_chat = st.columns([1, 2])
+    
+    with col_foto:
+        mostra_foto(ag_id, f"Faccia di {ag_nome}")
+        mostra_palazzo_personaggio(ag_id, ag_nome)
+        mostra_tutti_i_video_personaggio(ag_id, ag_nome)
+    
+    with col_chat:
+        st.markdown(f"### 💬 Parlando con {ag_nome}")
+        
+        if ag_id not in st.session_state.chat_history:
+            st.session_state.chat_history[ag_id] = []
+
+        container_chat = st.container(height=300)
+        with container_chat:
+            for msg in st.session_state.chat_history[ag_id]:
+                st.chat_message(msg["role"]).write(msg["content"])
+            
+        frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"chat_{ag_id}")
+        if st.button("💬 Invia Messaggio", key=f"btn_id_{ag_id}"):
+            if frase.strip():
+                st.session_state.chat_history[ag_id].append({"role": "user", "content": frase})
+                risp_ai = genera_risposta_ai(ag_nome, frase)
+                st.session_state.chat_history[ag_id].append({"role": "assistant", "content": risp_ai})
+                st.rerun()
+
+# --- TAB 2: CHARACTER'S LAB ---
+with tab_lab:
+    st.header("🎭 Character's Lab — Laboratorio degli Agenti")
+    st.subheader("🔑 Configurazione & Test della Chiave API Gemini")
+    
+    chiave_input = st.text_input(
+        "Incolla la tua Chiave API Gemini (inizia con AIzaSy...):",
+        value=st.session_state.get("gemini_key_manuale", ""),
+        type="password"
+    )
+    
+    col_btn_test, col_spia = st.columns([1, 2])
+    
+    with col_btn_test:
+        if st.button("⚡ TESTA E SALVA CHIAVE API", use_container_width=True):
+            chiave_p = chiave_input.strip()
+            if not chiave_p:
+                st.warning("🟡 La casella è vuota! Incolla prima una chiave.")
+                st.session_state.chiave_verificata_ok = False
+            else:
+                with st.spinner("🕵️‍♂️ Prova di connessione in corso..."):
+                    try:
+                        client_test = genai.Client(api_key=chiave_p)
+                        test_resp = client_test.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents="Rispondi 'OK'"
+                        )
+                        if test_resp and hasattr(test_resp, 'text'):
+                            st.session_state.gemini_key_manuale = chiave_p
+                            st.session_state.chiave_verificata_ok = True
+                            st.success("🟢 VITTORIA! La chiave è valida e funzionante!")
+                            st.balloons()
+                    except Exception as err_k:
+                        st.session_state.chiave_verificata_ok = False
+                        st.error("🔴 OH NO! La chiave API inserita non funziona!")
+                        st.caption(f"Dettaglio errore: {err_k}")
+
+    with col_spia:
+        if st.session_state.chiave_verificata_ok or ottieni_api_key().startswith("AIzaSy"):
+            st.success("🟢 Spia Verde: La chiave API è attiva e i personaggi possono parlare!")
+        else:
+            st.warning("🟡 Spia Gialla: Incolla la chiave e premi 'TESTA E SALVA' per attivare l'IA.")
+
+    st.divider()
+    st.subheader("👥 Scegli un Agente da Testare o Modificare")
+    
+    lista_agenti = list(config['agents'].keys())
+    sel_agent_id = st.selectbox("Seleziona personaggio:", lista_agenti, format_func=lambda x: config['agents'][x]['name'])
+    
+    if sel_agent_id:
+        p_dati = config['agents'][sel_agent_id]
+        p_nome = p_dati['name']
+        
+        col_lab_left, col_lab_right = st.columns([1, 1])
+        
+        with col_lab_left:
+            st.markdown(f"### 🖼️ Scheda di {p_nome}")
+            mostra_foto(sel_agent_id, f"Faccia di {p_nome}")
+            mostra_palazzo_personaggio(sel_agent_id, p_nome)
+            mostra_tutti_i_video_personaggio(sel_agent_id, p_nome)
+            
+            st.write(f"**Location Base:** {p_dati.get('location', 'Sconosciuta')}")
+            st.write(f"**Biografia:** {p_dati.get('biography', 'Nessuna biografia.')}")
+            
+        with col_lab_right:
+            st.markdown(f"### 💬 Prova di Dialogo Diretto con {p_nome}")
+            
+            if sel_agent_id not in st.session_state.lab_chat_history:
+                st.session_state.lab_chat_history[sel_agent_id] = []
+                
+            box_lab_chat = st.container(height=250)
+            with box_lab_chat:
+                for m in st.session_state.lab_chat_history[sel_agent_id]:
+                    st.chat_message(m["role"]).write(m["content"])
+                    
+            msg_lab = st.text_input(f"Fai una domanda di prova a {p_nome}:", key=f"lab_input_{sel_agent_id}")
+            if st.button("⚡ Test Risposta AI", key=f"lab_btn_{sel_agent_id}"):
+                if msg_lab.strip():
+                    st.session_state.lab_chat_history[sel_agent_id].append({"role": "user", "content": msg_lab})
+                    risp_test = genera_risposta_ai(p_nome, msg_lab)
+                    st.session_state.lab_chat_history[sel_agent_id].append({"role": "assistant", "content": risp_test})
+                    st.rerun()
+
+# --- TAB 3: DIAGNOSTICA ---
+with tab_diagnostica:
+    st.header("🔍 Diagnostica di Sistema")
+    st.write("📌 **Passaggio attuale:**", st.session_state.stage)
+    st.write("👤 **I tuoi Ricordi registrati:**", st.session_state.player_profile)
+    st.write("🚌 **Eventi registrati:**", st.session_state.event_bus.eventi)
