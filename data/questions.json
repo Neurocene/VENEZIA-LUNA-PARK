@@ -1,0 +1,48 @@
+[
+  {
+    "id": "nome",
+    "question": "Come vuoi essere chiamato durante questa storia?",
+    "type": "text",
+    "required": true
+  },
+  {
+    "id": "motivo",
+    "question": "Perché vuoi entrare a Venezia?",
+    "type": "long_text",
+    "required": true
+  },
+  {
+    "id": "fiducia",
+    "question": "Di chi ti fidi meno?",
+    "type": "choice",
+    "options": [
+      "Dei Fondatori",
+      "Degli ibridi",
+      "Delle intelligenze artificiali",
+      "Di chiunque prometta troppo",
+      "Di nessuno in particolare"
+    ],
+    "required": true
+  },
+  {
+    "id": "desiderio",
+    "question": "Che cosa desideri ottenere più di ogni altra cosa?",
+    "type": "long_text",
+    "required": true
+  },
+  {
+    "id": "limite",
+    "question": "Che cosa non saresti disposto a fare per ottenere ciò che vuoi?",
+    "type": "long_text",
+    "required": true
+  },
+  {
+    "id": "rischio",
+    "question": "Quanto sei disposto a rischiare?",
+    "type": "scale",
+    "min": 1,
+    "max": 10,
+    "default": 5,
+    "required": true
+  }
+]
