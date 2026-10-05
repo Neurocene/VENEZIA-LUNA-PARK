@@ -1,48 +1,18 @@
 [
   {
-    "id": "nome",
-    "question": "Come vuoi essere chiamato durante questa storia?",
-    "type": "text",
-    "required": true
+    "id": "nome_giocatore",
+    "question": "Come ti chiami, viaggiatore?",
+    "type": "text"
   },
   {
-    "id": "motivo",
-    "question": "Perché vuoi entrare a Venezia?",
-    "type": "long_text",
-    "required": true
-  },
-  {
-    "id": "fiducia",
-    "question": "Di chi ti fidi meno?",
+    "id": "motivo_ingresso",
+    "question": "Perché sei venuto a Venezia Luna Park?",
     "type": "choice",
-    "options": [
-      "Dei Fondatori",
-      "Degli ibridi",
-      "Delle intelligenze artificiali",
-      "Di chiunque prometta troppo",
-      "Di nessuno in particolare"
-    ],
-    "required": true
+    "options": ["Cerco un vecchio amico", "Voglio scoprire i segreti della città", "Fuga dal passato", "Cerco il Lizzie Bar"]
   },
   {
-    "id": "desiderio",
-    "question": "Che cosa desideri ottenere più di ogni altra cosa?",
-    "type": "long_text",
-    "required": true
-  },
-  {
-    "id": "limite",
-    "question": "Che cosa non saresti disposto a fare per ottenere ciò che vuoi?",
-    "type": "long_text",
-    "required": true
-  },
-  {
-    "id": "rischio",
+    "id": "propensione_rischio",
     "question": "Quanto sei disposto a rischiare?",
-    "type": "scale",
-    "min": 1,
-    "max": 10,
-    "default": 5,
-    "required": true
+    "type": "scale"
   }
 ]
