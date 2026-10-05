@@ -48,7 +48,7 @@ def riproduci_video(nome):
 # 3. I 5 PASSAGGI DEL GIOCO (STAGE SYSTEM)
 # ---------------------------------------------------------
 if "stage" not in st.session_state:
-    st.session_state.stage = "login"  # login -> video_1 -> questionnaire -> video_2 -> game
+    st.session_state.stage = "login"
 
 if "player_profile" not in st.session_state:
     st.session_state.player_profile = {}
@@ -59,32 +59,38 @@ if "event_bus" not in st.session_state:
 if "story_factory" not in st.session_state:
     st.session_state.story_factory = StoryFactory(st.session_state.event_bus)
 
+if "chiave_verificata_ok" not in st.session_state:
+    st.session_state.chiave_verificata_ok = False
+
 @st.cache_data
 def carica_mondo():
     return engine.load_world_config("data/world.json")
 
 config = carica_mondo()
 
-# Lettura della chiave API
+# Funzione per recuperare la chiave API in memoria
 def ottieni_api_key():
+    chiave_m = st.session_state.get("gemini_key_manuale", "").strip()
+    if chiave_m:
+        return chiave_m
     try:
         return st.secrets.get("GEMINI_API_KEY", "").strip()
     except Exception:
-        return st.session_state.get("gemini_key_manuale", "").strip()
+        return ""
 
-# Funzione universale per far parlare l'AI
+# Funzione per far rispondere Gemini ai personaggi
 def genera_risposta_ai(ag_nome, frase_giocatore):
     api_k = ottieni_api_key()
     if not api_k:
-        return "«Non posso parlare ora: incolla la tua chiave API Gemini prima!»"
+        return "«Non posso parlare ora: incolla e testa la tua chiave API nel Character's Lab!»"
     
     try:
         client = genai.Client(api_key=api_k)
         info_ricordi = json.dumps(st.session_state.player_profile, ensure_ascii=False)
         prompt = (
             f"Tu sei {ag_nome} nel gioco Venezia Luna Park.\n"
-            f"I ricordi che il giocatore ti ha raccontato sono: {info_ricordi}.\n"
-            f"Rispondi in italiano brevemente (max 2-3 frasi), rimanendo nel tuo personaggio.\n"
+            f"I ricordi raccontati dal giocatore sono: {info_ricordi}.\n"
+            f"Rispondi brevemente in italiano (max 2-3 frasi), restando nel personaggio.\n"
             f"Il giocatore dice: '{frase_giocatore}'"
         )
         modelli = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
@@ -199,7 +205,6 @@ with tab_gioca:
     
     mostra_foto("mappa_venezia", "Mappa di Venezia")
     
-    # Bottoni dei quartieri
     cols = st.columns(len(config['zones']))
     for i, z_key in enumerate(config['zones'].keys()):
         if cols[i].button(f"📍 {config['zones'][z_key]['name']}", key=f"nav_{z_key}"):
@@ -208,7 +213,6 @@ with tab_gioca:
             
     st.divider()
     
-    # Personaggio nel quartiere
     ag_id = config['zones'][s['location']].get('owner', 'brago')
     ag_nome = config['agents'].get(ag_id, {}).get('name', 'Brago')
     
@@ -237,21 +241,54 @@ with tab_gioca:
                 st.session_state.chat_history[ag_id].append({"role": "assistant", "content": risp_ai})
                 st.rerun()
 
-# --- TAB 2: CHARACTER'S LAB ---
+# --- TAB 2: CHARACTER'S LAB (CON TESTER DELLA CHIAVE API) ---
 with tab_lab:
     st.header("🎭 Character's Lab — Laboratorio degli Agenti")
-    st.text_input("🔑 Incolla qui la tua Chiave API Gemini (che inizia con AIzaSy...):", key="gemini_key_manuale", type="password")
+    st.subheader("🔑 Configurazione & Test della Chiave API Gemini")
     
-    if ottieni_api_key().startswith("AIzaSy"):
-        st.success("🟢 Spia Verde: La chiave API è caricata e pronta!")
-    else:
-        st.warning("🟡 Attenzione: Incolla la tua chiave API qui sopra per attivare l'IA!")
-        
+    chiave_input = st.text_input(
+        "Incolla la tua Chiave API Gemini (inizia con AIzaSy...):",
+        value=st.session_state.get("gemini_key_manuale", ""),
+        type="password"
+    )
+    
+    col_btn_test, col_spia = st.columns([1, 2])
+    
+    with col_btn_test:
+        if st.button("⚡ TESTA E SALVA CHIAVE API", use_container_width=True):
+            chiave_p = chiave_input.strip()
+            if not chiave_p:
+                st.warning("🟡 La casella è vuota! Incolla prima una chiave.")
+                st.session_state.chiave_verificata_ok = False
+            else:
+                with st.spinner("🕵️‍♂️ Prova di connessione a Gemini in corso..."):
+                    try:
+                        client_test = genai.Client(api_key=chiave_p)
+                        test_resp = client_test.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents="Rispondi 'OK'"
+                        )
+                        if test_resp and hasattr(test_resp, 'text'):
+                            st.session_state.gemini_key_manuale = chiave_p
+                            st.session_state.chiave_verificata_ok = True
+                            st.success("🟢 VITTORIA! La chiave è valida e funzionante!")
+                            st.balloons()
+                    except Exception as err_k:
+                        st.session_state.chiave_verificata_ok = False
+                        st.error("🔴 OH NO! La chiave API inserita non funziona!")
+                        st.caption(f"Dettaglio errore: {err_k}")
+
+    with col_spia:
+        if st.session_state.chiave_verificata_ok or ottieni_api_key().startswith("AIzaSy"):
+            st.success("🟢 Spia Verde: La chiave API è attiva e i personaggi possono parlare!")
+        else:
+            st.warning("🟡 Spia Gialla: Incolla la chiave e premi 'TESTA E SALVA' per attivare l'IA.")
+
     st.divider()
     st.subheader("👥 Scegli un Agente da Testare o Modificare")
     
     lista_agenti = list(config['agents'].keys())
-    sel_agent_id = st.selectbox("Seleziona personaggio:", lista_agenti, format_func=lambda x: config['agents'][m_x := x]['name'])
+    sel_agent_id = st.selectbox("Seleziona personaggio:", lista_agenti, format_func=lambda x: config['agents'][x]['name'])
     
     if sel_agent_id:
         p_dati = config['agents'][sel_agent_id]
