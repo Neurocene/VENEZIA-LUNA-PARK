@@ -16,7 +16,7 @@ os.makedirs("assets", exist_ok=True)
 os.makedirs("data", exist_ok=True)
 
 # ---------------------------------------------------------
-# 2. FUNZIONI PER FOTO E VIDEO AUTOMATICI
+# 2. FUNZIONI MAGICHE PER TROVARE FOTO E PALAZZI!
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -31,6 +31,15 @@ def mostra_foto(nome, didascalia=""):
         st.image(percorso, caption=didascalia, use_container_width=True)
     else:
         st.info(f"🖼️ [Immagine mancante: Metti {nome}.png dentro la cartella assets/]")
+
+# 🏰 NUOVA FUNZIONE SPECIALISSIMA PER IL PALAZZO DEL PERSONAGGIO!
+def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
+    nome_file_palazzo = f"{id_personaggio}_palace"
+    percorso = trova_foto(nome_file_palazzo)
+    if percorso:
+        st.image(percorso, caption=f"🏰 Palazzo di {nome_personaggio}", use_container_width=True)
+    else:
+        st.caption(f"🏚️ [Foto Palazzo mancante: carica {id_personaggio}_palace.jpg nella cartella assets/]")
 
 def riproduci_video(nome):
     for est in [".mp4", ".MP4"]:
@@ -68,7 +77,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# Funzione per recuperare la chiave API in memoria
+# Recupero chiave API Gemini
 def ottieni_api_key():
     chiave_m = st.session_state.get("gemini_key_manuale", "").strip()
     if chiave_m:
@@ -78,7 +87,7 @@ def ottieni_api_key():
     except Exception:
         return ""
 
-# Funzione per far rispondere Gemini ai personaggi
+# Risposta dell'AI Gemini
 def genera_risposta_ai(ag_nome, frase_giocatore):
     api_k = ottieni_api_key()
     if not api_k:
@@ -219,8 +228,10 @@ with tab_gioca:
     col_foto, col_chat = st.columns([1, 2])
     
     with col_foto:
-        mostra_foto(ag_id, ag_nome)
-        mostra_foto(s['location'], config['zones'][s['location']]['name'])
+        # 1. Foto Faccia Personaggio
+        mostra_foto(ag_id, f"Faccia di {ag_nome}")
+        # 2. 🏰 FOTO PALAZZO DEL PERSONAGGIO (SUBITO SOTTO!)
+        mostra_palazzo_personaggio(ag_id, ag_nome)
     
     with col_chat:
         st.markdown(f"### 💬 Parlando con {ag_nome}")
@@ -241,7 +252,7 @@ with tab_gioca:
                 st.session_state.chat_history[ag_id].append({"role": "assistant", "content": risp_ai})
                 st.rerun()
 
-# --- TAB 2: CHARACTER'S LAB (CON TESTER DELLA CHIAVE API) ---
+# --- TAB 2: CHARACTER'S LAB ---
 with tab_lab:
     st.header("🎭 Character's Lab — Laboratorio degli Agenti")
     st.subheader("🔑 Configurazione & Test della Chiave API Gemini")
@@ -298,7 +309,11 @@ with tab_lab:
         
         with col_lab_left:
             st.markdown(f"### 🖼️ Scheda di {p_nome}")
-            mostra_foto(sel_agent_id, f"Foto di {p_nome}")
+            # Foto del personaggio nel Lab
+            mostra_foto(sel_agent_id, f"Faccia di {p_nome}")
+            # 🏰 Foto Palazzo del personaggio nel Lab!
+            mostra_palazzo_personaggio(sel_agent_id, p_nome)
+            
             st.write(f"**Location Base:** {p_dati.get('location', 'Sconosciuta')}")
             st.write(f"**Biografia:** {p_dati.get('biography', 'Nessuna biografia.')}")
             
