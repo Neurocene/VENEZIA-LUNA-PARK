@@ -1,18 +1,23 @@
 [
   {
-    "id": "nome_giocatore",
-    "question": "Come ti chiami, viaggiatore?",
+    "id": "ricordo_passato",
+    "question": "Cosa ricordi del tuo passato?",
     "type": "text"
   },
   {
-    "id": "motivo_ingresso",
-    "question": "Perché sei venuto a Venezia Luna Park?",
-    "type": "choice",
-    "options": ["Cerco un vecchio amico", "Voglio scoprire i segreti della città", "Fuga dal passato", "Cerco il Lizzie Bar"]
+    "id": "soprannome_origine",
+    "question": "Come ti chiamano nel posto da dove vieni?",
+    "type": "text"
   },
   {
-    "id": "propensione_rischio",
-    "question": "Quanto sei disposto a rischiare?",
-    "type": "scale"
+    "id": "consapevolezza_luogo",
+    "question": "Sai dove ti trovi?",
+    "type": "choice",
+    "options": [
+      "Sì, sono a Venezia Luna Park!",
+      "No, sono completamente perso...",
+      "Ho solo un vago ricordo di questa città",
+      "So solo che devo trovare il Lizzie Bar"
+    ]
   }
 ]
