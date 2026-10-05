@@ -1,5 +1,6 @@
 import time
 
+# 🚌 1. IL DIARIO SEGRETO (EVENT BUS)
 class EventBus:
     def __init__(self):
         self.eventi = []
@@ -17,17 +18,18 @@ class EventBus:
         self.eventi.append(nuovo_fatto)
         return nuovo_fatto
 
+# 🎬 2. IL REGISTA INVISIBILE
 class StoryFactory:
     def __init__(self, event_bus):
         self.bus = event_bus
 
     def trova_opportunita(self, posizione_giocatore, inventario_giocatore, personaggio_presente):
         if "vhs_brago" in inventario_giocatore and personaggio_presente == "rosko":
-            return "NOTIZIA EXTRA: Il giocatore ha la VHS di Brago! Chiedigli spiegazioni con sospetto."
+            return "NOTIZIA EXTRA: Il giocatore ha la VHS di Brago! Chiedigli spiegazioni."
         return ""
 
     def trova_opportunita_ai(self, api_key, personaggio_presente, posizione, inventario, stato_gioco):
-        return f"Il personaggio {personaggio_presente} ti osserva con attenzione a {posizione}."
+        return f"Il personaggio {personaggio_presente} ti osserva a {posizione}."
 
 def valida_azione(personaggio, posizione_personaggio, posizione_giocatore):
     return posizione_personaggio == posizione_giocatore
