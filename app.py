@@ -86,8 +86,6 @@ if "auth" not in st.session_state:
     st.session_state.auth = False
 if "intro_seen" not in st.session_state:
     st.session_state.intro_seen = False
-if "show_lab" not in st.session_state:
-    st.session_state.show_lab = False
 if "last_reply" not in st.session_state:
     st.session_state.last_reply = None
 
@@ -118,9 +116,21 @@ def speak(agent_id, user_text, engine_reply):
 
     a = config["agents"][agent_id]
     ctx = engine.private_context(s, config, agent_id)
-    direction = st.session_state.story_factory.trova_opportunita(
-        s["location"], s["inventory"], agent_id, s
-    )
+    if st.session_state.get("use_story_ai", False):
+        direction = st.session_state.story_factory.trova_opportunita_ai(
+            api_key=key,
+            personaggio_presente=agent_id,
+            posizione_giocatore=s["location"],
+            inventario_giocatore=s["inventory"],
+            stato_gioco=s,
+            scheda_personaggio=a,
+            modello="gemini-2.5-flash",
+            bibbia_mondo=read_bible(),
+        )
+    else:
+        direction = st.session_state.story_factory.trova_opportunita(
+            s["location"], s["inventory"], agent_id, s
+        )
 
     prompt = (
         f"Sei {a['name']}, personaggio di Venezia Luna Park. "
@@ -176,9 +186,7 @@ if not st.session_state.intro_seen:
 # HEADER
 # ---------------------------------------------------------
 h0, h1, h2, h3, h4 = st.columns([1.4, 1, 1.7, 1.3, 1])
-if h0.button("🎭 CHARACTER'S LAB", use_container_width=True):
-    st.session_state.show_lab = not st.session_state.show_lab
-    st.rerun()
+h0.markdown("### 🎭 STORY FACTORY")
 
 h1.metric("⏳ Ora", f"{s['hour']}/72")
 h2.metric("📍 Luogo", config["zones"][s["location"]]["name"])
@@ -190,42 +198,8 @@ if h4.button("⏸ Sospendi" if not s["paused"] else "▶ Riprendi", use_containe
 
 
 # ---------------------------------------------------------
-# CHARACTER'S LAB
+# CHARACTER'S LAB ORA È UNA TAB PRINCIPALE A TUTTA LARGHEZZA
 # ---------------------------------------------------------
-if st.session_state.show_lab:
-    with st.sidebar:
-        st.header("🎭 CHARACTER'S LAB")
-        st.session_state.use_gemini = st.toggle(
-            "Usa Gemini per la voce",
-            value=st.session_state.get("use_gemini", False),
-        )
-
-        aid = st.selectbox(
-            "Agente",
-            list(config["agents"]),
-            format_func=lambda x: config["agents"][x]["name"],
-        )
-        agent = config["agents"][aid]
-        show_image(aid, agent["name"])
-
-        bio = st.text_area(
-            "Biografia",
-            value=read_character_text(aid, agent["biography"]),
-            height=220,
-        )
-        voice = st.text_area("Voce", value=agent["voice"], height=100)
-        goals = st.text_area("Obiettivi", value="\n".join(agent["goals"]), height=100)
-
-        if st.button("💾 Applica alla sessione", use_container_width=True):
-            agent["biography"] = bio
-            agent["voice"] = voice
-            agent["goals"] = [x.strip() for x in goals.splitlines() if x.strip()]
-            st.success("Scheda aggiornata nella sessione.")
-
-        st.divider()
-        st.caption("Bibbia del mondo")
-        st.text_area("bibbia.txt", value=read_bible(), height=180, disabled=True)
-
 
 # ---------------------------------------------------------
 # AVVISI
@@ -240,7 +214,14 @@ elif s["status"] != "in_corso":
     st.error(f"PARTITA CONCLUSA: {s['status']}")
 
 
-tabs = st.tabs(["🎮 Gioca", "🗺️ Mappa", "👤 Personaggi", "💬 Agenti", "🛠 Diagnostica"])
+tabs = st.tabs([
+    "🎮 Gioca",
+    "🗺️ Mappa",
+    "👤 Personaggi",
+    "💬 Agenti",
+    "🎭 Character's Lab",
+    "🛠 Diagnostica",
+])
 
 
 # ---------------------------------------------------------
@@ -463,14 +444,211 @@ with tabs[3]:
 # DIAGNOSTICA
 # ---------------------------------------------------------
 with tabs[4]:
+    st.header("🎭 Character's Lab")
+    st.caption(
+        "Qui modifichi i personaggi e controlli i due livelli AI: "
+        "l'attore che interpreta il personaggio e Story Factory che fa da regista."
+    )
+
+    # --- AI CONTROL -------------------------------------------------
+    st.subheader("🤖 Intelligenza artificiale")
+    ai1, ai2, ai3 = st.columns([1, 1, 1.2])
+
+    with ai1:
+        st.session_state.use_gemini = st.toggle(
+            "Gemini interpreta i personaggi",
+            value=st.session_state.get("use_gemini", False),
+        )
+
+    with ai2:
+        st.session_state.use_story_ai = st.toggle(
+            "Gemini fa anche da Story Factory",
+            value=st.session_state.get("use_story_ai", False),
+        )
+
+    with ai3:
+        if gemini_key():
+            st.success("🔑 GEMINI_API_KEY attiva")
+        else:
+            st.error("🔑 GEMINI_API_KEY non configurata nei Secrets")
+
+    st.divider()
+
+    # --- CHARACTER SELECTOR -----------------------------------------
+    lab_aid = st.selectbox(
+        "Personaggio da modificare",
+        list(config["agents"]),
+        format_func=lambda x: config["agents"][x]["name"],
+        key="lab_agent_selector",
+    )
+    lab_agent = config["agents"][lab_aid]
+
+    visual, editor = st.columns([1, 2.4], gap="large")
+
+    with visual:
+        st.subheader(lab_agent["name"])
+        if not show_image(lab_aid, lab_agent["name"]):
+            st.info(f"Nessuna immagine: assets/{lab_aid}.png")
+        if not show_video(f"{lab_aid}_video"):
+            st.caption("Nessun video disponibile.")
+
+        st.markdown("#### Stato nella partita")
+        st.write(f"**Fiducia:** {s['trust'].get(lab_aid, 0)}")
+        st.write(f"**Zona base:** {config['zones'][lab_agent['zone']]['name']}")
+        st.write(f"**Visite:** {s['visits'].get(lab_aid, 0)}")
+
+        st.markdown("#### Memoria corrente")
+        memories = s["knowledge"].get(lab_aid, [])
+        if memories:
+            for item in memories[-8:]:
+                st.write("• " + item)
+        else:
+            st.caption("Nessun ricordo aggiuntivo.")
+
+    with editor:
+        name_edit = st.text_input(
+            "Nome",
+            value=lab_agent["name"],
+            key=f"lab_name_{lab_aid}",
+        )
+
+        role_edit = st.text_input(
+            "Ruolo narrativo",
+            value=lab_agent.get("role", ""),
+            key=f"lab_role_{lab_aid}",
+        )
+
+        bio_edit = st.text_area(
+            "Biografia / identità",
+            value=read_character_text(lab_aid, lab_agent["biography"]),
+            height=300,
+            key=f"lab_bio_{lab_aid}",
+        )
+
+        voice_edit = st.text_area(
+            "Voce e comportamento",
+            value=lab_agent["voice"],
+            height=130,
+            key=f"lab_voice_{lab_aid}",
+        )
+
+        c_goal, c_private = st.columns(2)
+        with c_goal:
+            goals_edit = st.text_area(
+                "Obiettivi — uno per riga",
+                value="\n".join(lab_agent.get("goals", [])),
+                height=180,
+                key=f"lab_goals_{lab_aid}",
+            )
+        with c_private:
+            private_edit = st.text_area(
+                "Conoscenze private — una per riga",
+                value="\n".join(lab_agent.get("private_knowledge", [])),
+                height=180,
+                key=f"lab_private_{lab_aid}",
+            )
+
+        initial_edit = st.text_area(
+            "Conoscenze iniziali — una per riga",
+            value="\n".join(lab_agent.get("initial_knowledge", [])),
+            height=140,
+            key=f"lab_initial_{lab_aid}",
+        )
+
+        zone_ids = list(config["zones"])
+        current_zone = lab_agent.get("zone", zone_ids[0])
+        zone_edit = st.selectbox(
+            "Zona base",
+            zone_ids,
+            index=zone_ids.index(current_zone) if current_zone in zone_ids else 0,
+            format_func=lambda zid: config["zones"][zid]["name"],
+            key=f"lab_zone_{lab_aid}",
+        )
+
+        st.markdown("#### Temi di conversazione")
+        topic_cols = st.columns(2)
+        topic_values = {}
+        for idx, topic in enumerate(sorted(engine.TOPICS)):
+            with topic_cols[idx % 2]:
+                topic_values[topic] = st.text_input(
+                    topic,
+                    value=lab_agent.get("topics", {}).get(topic, ""),
+                    key=f"lab_topic_{lab_aid}_{topic}",
+                )
+
+        if st.button("💾 APPLICA MODIFICHE ALLA SESSIONE", use_container_width=True):
+            draft = json.loads(json.dumps(config))
+            target = draft["agents"][lab_aid]
+
+            target["name"] = name_edit.strip() or target["name"]
+            target["role"] = role_edit
+            target["biography"] = bio_edit
+            target["voice"] = voice_edit
+            target["goals"] = [x.strip() for x in goals_edit.splitlines() if x.strip()]
+            target["private_knowledge"] = [
+                x.strip() for x in private_edit.splitlines() if x.strip()
+            ]
+            target["initial_knowledge"] = [
+                x.strip() for x in initial_edit.splitlines() if x.strip()
+            ]
+            target["zone"] = zone_edit
+            target["topics"] = topic_values
+
+            try:
+                engine.validate(draft)
+            except Exception as exc:
+                st.error(f"Modifica non valida: {exc}")
+            else:
+                st.session_state.config = draft
+                config = st.session_state.config
+                st.success(
+                    "Modifiche applicate. Per conservarle anche dopo un riavvio, "
+                    "scarica world.json dal pulsante qui sotto e sostituiscilo nel repository."
+                )
+                st.rerun()
+
+    st.divider()
+
+    bible_left, bible_right = st.columns([2, 1])
+    with bible_left:
+        st.subheader("📖 Bibbia del mondo")
+        st.text_area(
+            "data/bibbia.txt",
+            value=read_bible(),
+            height=300,
+            disabled=True,
+        )
+
+    with bible_right:
+        st.subheader("💾 Esporta")
+        current_world = json.dumps(config, ensure_ascii=False, indent=2)
+        st.download_button(
+            "⬇️ Scarica world.json aggiornato",
+            data=current_world,
+            file_name="world.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        st.caption(
+            "Su Streamlit Cloud le modifiche della sessione non sono permanenti. "
+            "Per salvarle davvero, sostituisci data/world.json nel repository."
+        )
+
+
+with tabs[5]:
     st.header("🛠 Diagnostica")
     st.write("**assets:**", str(ASSETS))
     st.write("**data:**", str(DATA))
     st.write("**world.json:**", "OK" if WORLD.exists() else "MANCANTE")
     st.write("**copertina:**", "OK" if find_asset("copertina", IMG_EXT) else "MANCANTE")
     st.write("**mappa:**", "OK" if find_asset("mappa_venezia", IMG_EXT) else "MANCANTE")
+    st.write("**Gemini API:**", "ATTIVA" if gemini_key() else "NON CONFIGURATA")
+    st.write(
+        "**Story Factory AI:**",
+        "ATTIVA" if st.session_state.get("use_story_ai", False) else "SPENTA",
+    )
 
-    st.subheader("Eventi")
+    st.subheader("Eventi del motore")
     for ev in reversed(s["events"]):
         st.text(f"[Ora {ev['hour']}] {ev['text']}")
 
