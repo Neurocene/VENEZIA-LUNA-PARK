@@ -1,5 +1,3 @@
-import base64
-import copy
 import json
 import os
 from pathlib import Path
@@ -13,84 +11,86 @@ try:
 except Exception:
     genai = None
 
-
-# =========================================================
-# CONFIGURAZIONE
-# =========================================================
-st.set_page_config(
-    page_title="Venezia Luna Park — Story Factory",
-    page_icon="🎭",
-    layout="wide",
-)
+st.set_page_config(page_title="Venezia Luna Park", page_icon="🎭", layout="wide")
 
 ROOT = Path(__file__).parent
 ASSETS = ROOT / "assets"
 DATA = ROOT / "data"
-WORLD_FILE = DATA / "world.json"
-ASSETS.mkdir(exist_ok=True)
-DATA.mkdir(exist_ok=True)
+WORLD = DATA / "world.json"
+
+IMG_EXT = (".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG")
+VID_EXT = (".mp4", ".MP4")
 
 
-# =========================================================
-# ASSET / MEDIA
-# =========================================================
-def trova_asset(nome, estensioni):
-    for est in estensioni:
-        p = ASSETS / f"{nome}{est}"
+# ---------------------------------------------------------
+# FILE DEL PROGETTO
+# ---------------------------------------------------------
+def find_asset(stem, exts):
+    for ext in exts:
+        p = ASSETS / f"{stem}{ext}"
         if p.exists():
             return p
     return None
 
 
-def foto(nome):
-    return trova_asset(nome, [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"])
-
-
-def video(nome):
-    return trova_asset(nome, [".mp4", ".MP4"])
-
-
-def mostra_foto(nome, caption=None, width=None):
-    p = foto(nome)
+def show_image(stem, caption=None):
+    p = find_asset(stem, IMG_EXT)
     if p:
-        st.image(str(p), caption=caption, width=width, use_container_width=(width is None))
+        st.image(str(p), caption=caption, use_container_width=True)
         return True
     return False
 
 
-def mostra_video(nome):
-    p = video(nome)
+def show_video(stem):
+    p = find_asset(stem, VID_EXT)
     if p:
         st.video(str(p))
         return True
     return False
 
 
-def salva_upload(upload, stem):
-    if not upload:
-        return None
-    est = Path(upload.name).suffix.lower()
-    p = ASSETS / f"{stem}{est}"
-    p.write_bytes(upload.getbuffer())
-    return p
+def read_character_text(agent_id, fallback=""):
+    candidates = [
+        DATA / f"{agent_id}.txt",
+        DATA / f"{agent_id.capitalize()}.txt",
+        DATA / f"{agent_id.upper()}.txt",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p.read_text(encoding="utf-8")
+    return fallback
 
 
-def imposta_copertina():
-    p = foto("copertina")
-    if not p:
-        return
-    encoded = base64.b64encode(p.read_bytes()).decode()
-    css = (
-        "<style>"
-        ".stApp {"
-        "background-image:"
-        "linear-gradient(rgba(5,8,12,.20), rgba(5,8,12,.82)),"
-        "url('data:image/png;base64," + encoded + "');"
-        "background-size:cover;"
-        "background-position:center;"
-        "background-attachment:fixed;"
-        "}"
-        ".block-container {padding-top:58vh;}"
-        "header {visibility:hidden;}"
-        "</style>"
-    )
+def read_bible():
+    p = DATA / "bibbia.txt"
+    if p.exists():
+        return p.read_text(encoding="utf-8")
+    return "Venezia Luna Park è una città viva governata da desideri, alleanze e conseguenze."
+
+
+def load_world():
+    return engine.load_world_config(str(WORLD))
+
+
+# ---------------------------------------------------------
+# SESSIONE
+# ---------------------------------------------------------
+if "config" not in st.session_state:
+    st.session_state.config = load_world()
+if "game" not in st.session_state:
+    st.session_state.game = engine.new_game(st.session_state.config)
+if "event_bus" not in st.session_state:
+    st.session_state.event_bus = EventBus()
+    st.session_state.story_factory = StoryFactory(st.session_state.event_bus)
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+if "intro_seen" not in st.session_state:
+    st.session_state.intro_seen = False
+if "show_lab" not in st.session_state:
+    st.session_state.show_lab = False
+if "last_reply" not in st.session_state:
+    st.session_state.last_reply = None
+
+config = st.session_state.config
+s = st.session_state.game
+engine.timer(s, config)
