@@ -1,6 +1,6 @@
 import time
 
-# 🚌 1. IL DIARIO SEGRETO (EVENT BUS)
+# 🚌 1. IL DIARIO SEGRETO DELLE AZIONI (EVENT BUS)
 class EventBus:
     def __init__(self):
         self.eventi = []
@@ -18,7 +18,7 @@ class EventBus:
         self.eventi.append(nuovo_fatto)
         return nuovo_fatto
 
-# 🎬 2. IL REGISTA INVISIBILE
+# 🎬 2. IL REGISTA INVISIBILE (STORY FACTORY)
 class StoryFactory:
     def __init__(self, event_bus):
         self.bus = event_bus
