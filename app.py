@@ -41,11 +41,11 @@ def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
     else:
         st.caption(f"🏚️ [Foto Palazzo mancante: carica {id_personaggio}_palace.jpg in assets/]")
 
-# 🎬 MECCANISMO MAGICO PER TROVARE PIÙ VIDEO AUTOMATICAMENTE!
+# 🎬 MECCANISMO MAGICO PER I VIDEO NUMERATI PROGRESSIVAMENTE!
 def mostra_tutti_i_video_personaggio(id_personaggio, nome_personaggio):
     video_trovati = []
     
-    # Cerchiamo fino a 10 video (es. brago_video_1.mp4, brago_video_2.mp4...)
+    # Il computer controlla i video dal numero 1 fino al numero 10!
     for i in range(1, 11):
         for est in [".mp4", ".MP4"]:
             percorso = os.path.join("assets", f"{id_personaggio}_video_{i}{est}")
@@ -53,7 +53,7 @@ def mostra_tutti_i_video_personaggio(id_personaggio, nome_personaggio):
                 video_trovati.append((i, percorso))
                 break
                 
-    # Se non trova i video numerati, prova a cercare il vecchio brago_video.mp4
+    # Se non trova quelli con il numero, cerca il video semplice (es. brago_video.mp4)
     if not video_trovati:
         for est in [".mp4", ".MP4"]:
             percorso = os.path.join("assets", f"{id_personaggio}_video{est}")
@@ -61,14 +61,19 @@ def mostra_tutti_i_video_personaggio(id_personaggio, nome_personaggio):
                 video_trovati.append((1, percorso))
                 break
 
-    # Se abbiamo trovato dei video li mostriamo!
+    # Se trova uno o più video, li mostra a schermo!
     if video_trovati:
         st.markdown(f"#### 🎬 Video di {nome_personaggio} ({len(video_trovati)})")
         
-        # Se c'è più di un video, creiamo i bottoncini per scegliere quale guardare!
+        # Se ce n'è più di uno, crea i pulsanti per scegliere quale guardare!
         if len(video_trovati) > 1:
             nomi_video = [f"🎥 Video {num}" for num, _ in video_trovati]
-            scelta = st.radio(f"Scegli quale video guardare:", nomi_video, key=f"rad_vid_{id_personaggio}", horizontal=True)
+            scelta = st.radio(
+                f"Scegli quale video di {nome_personaggio} vuoi guardare:", 
+                nomi_video, 
+                key=f"rad_vid_{id_personaggio}", 
+                horizontal=True
+            )
             indice = nomi_video.index(scelta)
             st.video(video_trovati[indice][1])
         else:
@@ -265,7 +270,7 @@ with tab_gioca:
     with col_foto:
         mostra_foto(ag_id, f"Faccia di {ag_nome}")
         mostra_palazzo_personaggio(ag_id, ag_nome)
-        # 🎬 IL NOSTRO SCHERMO CINEMATOGRAFICO MULTIPLO!
+        # 🎬 I VIDEO MULTIPLI APPARIRANNO QUI!
         mostra_tutti_i_video_personaggio(ag_id, ag_nome)
     
     with col_chat:
