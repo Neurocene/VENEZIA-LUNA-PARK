@@ -176,14 +176,20 @@ if st.session_state.stage == "video_1":
 
 # ---------------------------------------------------------
 # STAGE 3: VIDEO DI BRAGO + QUESTIONARIO DEI RICORDI 🎬📋
+# (QUANTO BRAGO È ANCORA PRESENTE PRIMA DELL'INGRESSO!)
 # ---------------------------------------------------------
 if st.session_state.stage == "questionnaire":
     st.title("🎬 Messaggio di Brago & 📋 Domande sul tuo Passato")
     st.caption("Guarda il video di Brago e poi rispondi alle domande per scoprire chi sei...")
     
-    v_brago_ok = riproduci_video_generico("brago_video")
-    if not v_brago_ok:
-        st.info("ℹ️ Per vedere il video di Brago qui in alto, carica il file `brago_video.mp4` nella cartella `assets/`!")
+    # Scheda visibile di Brago
+    col_brago_f, col_brago_v = st.columns([1, 2])
+    with col_brago_f:
+        mostra_foto("brago", "Brago — Il Custode dell'Ingresso")
+    with col_brago_v:
+        v_brago_ok = riproduci_video_generico("brago_video")
+        if not v_brago_ok:
+            st.info("ℹ️ Carica `brago_video.mp4` nella cartella `assets/` per vederlo qui!")
 
     st.divider()
 
@@ -228,7 +234,7 @@ if st.session_state.stage == "video_2":
     st.stop()
 
 # ---------------------------------------------------------
-# STAGE 5: IL GIOCO VERO E PROPRIO
+# STAGE 5: IL GIOCO VERO E PROPRIO (DOVE BRAGO NON COMPARE PIÙ!)
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -257,8 +263,12 @@ with tab_gioca:
             
     st.divider()
     
-    ag_id = config['zones'][s['location']].get('owner', 'brago')
-    ag_nome = config['agents'].get(ag_id, {}).get('name', 'Brago')
+    # 🧙‍♂️ TROVIAMO IL PERSONAGGIO DELLA ZONA (SE È BRAGO, LO SOSTITUIAMO CON ROSKO O UN ALTRO ABITANTE!)
+    ag_id = config['zones'][s['location']].get('owner', 'rosko')
+    if ag_id == "brago":
+        ag_id = "rosko"  # <-- ECCO IL TRUCCO! Brago non appare più a Venezia!
+        
+    ag_nome = config['agents'].get(ag_id, {}).get('name', 'Rosko')
     
     col_foto, col_chat = st.columns([1, 2])
     
@@ -332,7 +342,8 @@ with tab_lab:
     st.divider()
     st.subheader("👥 Scegli un Agente da Testare o Modificare")
     
-    lista_agenti = list(config['agents'].keys())
+    # Nel Lab escludiamo Brago se vuoi che sia un personaggio segreto del prologo!
+    lista_agenti = [a for a in config['agents'].keys() if a != "brago"]
     sel_agent_id = st.selectbox("Seleziona personaggio:", lista_agenti, format_func=lambda x: config['agents'][x]['name'])
     
     if sel_agent_id:
