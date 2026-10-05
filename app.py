@@ -16,7 +16,7 @@ os.makedirs("assets", exist_ok=True)
 os.makedirs("data", exist_ok=True)
 
 # ---------------------------------------------------------
-# 2. FUNZIONI PER FOTO, PALAZZI E VIDEO MULTIPLI
+# 2. FUNZIONI PER FOTO, PALAZZI E VIDEO MOOD 🎬
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -40,38 +40,23 @@ def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
     else:
         st.caption(f"🏚️ [Foto Palazzo mancante: carica {id_personaggio}_palace.jpg in assets/]")
 
-def mostra_tutti_i_video_personaggio(id_personaggio, nome_personaggio):
-    video_trovati = []
-    for i in range(1, 11):
+# 🎬 NUOVA FUNZIONE PER IL VIDEO MOOD SOPRA IL PERSONAGGIO!
+def mostra_video_mood(id_personaggio, nome_personaggio):
+    # Cerchiamo sia id_talk.mp4 che id.talk.mp4 per sicurezza!
+    nomi_da_provare = [f"{id_personaggio}_talk", f"{id_personaggio}.talk"]
+    for nome_file in nomi_da_provare:
         for est in [".mp4", ".MP4"]:
-            percorso = os.path.join("assets", f"{id_personaggio}_video_{i}{est}")
+            percorso = os.path.join("assets", f"{nome_file}{est}")
             if os.path.exists(percorso):
-                video_trovati.append((i, percorso))
-                break
-                
-    if not video_trovati:
-        for est in [".mp4", ".MP4"]:
-            percorso = os.path.join("assets", f"{id_personaggio}_video{est}")
-            if os.path.exists(percorso):
-                video_trovati.append((1, percorso))
-                break
-
-    if video_trovati:
-        st.markdown(f"#### 🎬 Video di {nome_personaggio} ({len(video_trovati)})")
-        if len(video_trovati) > 1:
-            nomi_video = [f"🎥 Video {num}" for num, _ in video_trovati]
-            scelta = st.radio(
-                f"Scegli quale video guardare:", 
-                nomi_video, 
-                key=f"rad_vid_{id_personaggio}", 
-                horizontal=True
-            )
-            indice = nomi_video.index(scelta)
-            st.video(video_trovati[indice][1])
-        else:
-            st.video(video_trovati[0][1])
-    else:
-        st.caption(f"🎥 [Nessun video trovato: carica {id_personaggio}_video_1.mp4 in assets/]")
+                try:
+                    st.caption(f"🎬 Mood di {nome_personaggio}")
+                    st.video(percorso)
+                    return True
+                except Exception as e:
+                    st.warning(f"⚠️ Errore video mood: {e}")
+                    return False
+    st.caption(f"🎥 [Video Mood mancante: carica {id_personaggio}_talk.mp4 in assets/]")
+    return False
 
 def riproduci_video_generico(nome):
     for est in [".mp4", ".MP4"]:
@@ -175,14 +160,12 @@ if st.session_state.stage == "video_1":
     st.stop()
 
 # ---------------------------------------------------------
-# STAGE 3: VIDEO DI BRAGO + QUESTIONARIO DEI RICORDI 🎬📋
-# (QUANTO BRAGO È ANCORA PRESENTE PRIMA DELL'INGRESSO!)
+# STAGE 3: BRAGO + QUESTIONARIO DEI RICORDI
 # ---------------------------------------------------------
 if st.session_state.stage == "questionnaire":
     st.title("🎬 Messaggio di Brago & 📋 Domande sul tuo Passato")
     st.caption("Guarda il video di Brago e poi rispondi alle domande per scoprire chi sei...")
     
-    # Scheda visibile di Brago
     col_brago_f, col_brago_v = st.columns([1, 2])
     with col_brago_f:
         mostra_foto("brago", "Brago — Il Custode dell'Ingresso")
@@ -234,7 +217,7 @@ if st.session_state.stage == "video_2":
     st.stop()
 
 # ---------------------------------------------------------
-# STAGE 5: IL GIOCO VERO E PROPRIO (DOVE BRAGO NON COMPARE PIÙ!)
+# STAGE 5: IL GIOCO VERO E PROPRIO
 # ---------------------------------------------------------
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
@@ -263,19 +246,23 @@ with tab_gioca:
             
     st.divider()
     
-    # 🧙‍♂️ TROVIAMO IL PERSONAGGIO DELLA ZONA (SE È BRAGO, LO SOSTITUIAMO CON ROSKO O UN ALTRO ABITANTE!)
     ag_id = config['zones'][s['location']].get('owner', 'rosko')
     if ag_id == "brago":
-        ag_id = "rosko"  # <-- ECCO IL TRUCCO! Brago non appare più a Venezia!
+        ag_id = "rosko"
         
     ag_nome = config['agents'].get(ag_id, {}).get('name', 'Rosko')
     
     col_foto, col_chat = st.columns([1, 2])
     
     with col_foto:
+        # 1. 🎬 VIDEO MOOD PROPRIO IN ALTO PRIMA DI TUTTO!
+        mostra_video_mood(ag_id, ag_nome)
+        
+        # 2. Foto Faccia Personaggio
         mostra_foto(ag_id, f"Faccia di {ag_nome}")
+        
+        # 3. Foto Palazzo
         mostra_palazzo_personaggio(ag_id, ag_nome)
-        mostra_tutti_i_video_personaggio(ag_id, ag_nome)
     
     with col_chat:
         st.markdown(f"### 💬 Parlando con {ag_nome}")
@@ -342,7 +329,6 @@ with tab_lab:
     st.divider()
     st.subheader("👥 Scegli un Agente da Testare o Modificare")
     
-    # Nel Lab escludiamo Brago se vuoi che sia un personaggio segreto del prologo!
     lista_agenti = [a for a in config['agents'].keys() if a != "brago"]
     sel_agent_id = st.selectbox("Seleziona personaggio:", lista_agenti, format_func=lambda x: config['agents'][x]['name'])
     
@@ -354,9 +340,10 @@ with tab_lab:
         
         with col_lab_left:
             st.markdown(f"### 🖼️ Scheda di {p_nome}")
+            # Video Mood in alto nel Lab!
+            mostra_video_mood(sel_agent_id, p_nome)
             mostra_foto(sel_agent_id, f"Faccia di {p_nome}")
             mostra_palazzo_personaggio(sel_agent_id, p_nome)
-            mostra_tutti_i_video_personaggio(sel_agent_id, p_nome)
             
             st.write(f"**Location Base:** {p_dati.get('location', 'Sconosciuta')}")
             st.write(f"**Biografia:** {p_dati.get('biography', 'Nessuna biografia.')}")
