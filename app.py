@@ -16,7 +16,7 @@ os.makedirs("assets", exist_ok=True)
 os.makedirs("data", exist_ok=True)
 
 # ---------------------------------------------------------
-# 2. FUNZIONI MAGICHE PER TROVARE FOTO E PALAZZI!
+# 2. FUNZIONI MAGICHE PER FOTO, PALAZZI E VIDEO MULTIPLI! 🎬
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -30,18 +30,53 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
     else:
-        st.info(f"🖼️ [Immagine mancante: Metti {nome}.png dentro la cartella assets/]")
+        st.info(f"🖼️️ [Immagine mancante: Metti {nome}.png dentro la cartella assets/]")
 
-# 🏰 NUOVA FUNZIONE SPECIALISSIMA PER IL PALAZZO DEL PERSONAGGIO!
+# 🏰 FOTO DEL PALAZZO DEL PERSONAGGIO
 def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
     nome_file_palazzo = f"{id_personaggio}_palace"
     percorso = trova_foto(nome_file_palazzo)
     if percorso:
         st.image(percorso, caption=f"🏰 Palazzo di {nome_personaggio}", use_container_width=True)
     else:
-        st.caption(f"🏚️ [Foto Palazzo mancante: carica {id_personaggio}_palace.jpg nella cartella assets/]")
+        st.caption(f"🏚️ [Foto Palazzo mancante: carica {id_personaggio}_palace.jpg in assets/]")
 
-def riproduci_video(nome):
+# 🎬 MECCANISMO MAGICO PER TROVARE PIÙ VIDEO AUTOMATICAMENTE!
+def mostra_tutti_i_video_personaggio(id_personaggio, nome_personaggio):
+    video_trovati = []
+    
+    # Cerchiamo fino a 10 video (es. brago_video_1.mp4, brago_video_2.mp4...)
+    for i in range(1, 11):
+        for est in [".mp4", ".MP4"]:
+            percorso = os.path.join("assets", f"{id_personaggio}_video_{i}{est}")
+            if os.path.exists(percorso):
+                video_trovati.append((i, percorso))
+                break
+                
+    # Se non trova i video numerati, prova a cercare il vecchio brago_video.mp4
+    if not video_trovati:
+        for est in [".mp4", ".MP4"]:
+            percorso = os.path.join("assets", f"{id_personaggio}_video{est}")
+            if os.path.exists(percorso):
+                video_trovati.append((1, percorso))
+                break
+
+    # Se abbiamo trovato dei video li mostriamo!
+    if video_trovati:
+        st.markdown(f"#### 🎬 Video di {nome_personaggio} ({len(video_trovati)})")
+        
+        # Se c'è più di un video, creiamo i bottoncini per scegliere quale guardare!
+        if len(video_trovati) > 1:
+            nomi_video = [f"🎥 Video {num}" for num, _ in video_trovati]
+            scelta = st.radio(f"Scegli quale video guardare:", nomi_video, key=f"rad_vid_{id_personaggio}", horizontal=True)
+            indice = nomi_video.index(scelta)
+            st.video(video_trovati[indice][1])
+        else:
+            st.video(video_trovati[0][1])
+    else:
+        st.caption(f"🎥 [Nessun video trovato: carica {id_personaggio}_video_1.mp4 nella cartella assets/]")
+
+def riproduci_video_generico(nome):
     for est in [".mp4", ".MP4"]:
         percorso = os.path.join("assets", f"{nome}{est}")
         if os.path.exists(percorso):
@@ -135,7 +170,7 @@ if st.session_state.stage == "login":
 # ---------------------------------------------------------
 if st.session_state.stage == "video_1":
     st.title("🎬 Inizio del Viaggio")
-    v_ok = riproduci_video("intro_1")
+    v_ok = riproduci_video_generico("intro_1")
     if not v_ok:
         st.info("ℹ️ Video `assets/intro_1.mp4` non trovato. Clicca sotto per proseguire!")
 
@@ -182,7 +217,7 @@ if st.session_state.stage == "questionnaire":
 # ---------------------------------------------------------
 if st.session_state.stage == "video_2":
     st.title("🎬 L'Arrivo a Venezia")
-    v_ok = riproduci_video("intro_2")
+    v_ok = riproduci_video_generico("intro_2")
     if not v_ok:
         st.info("ℹ️ Video `assets/intro_2.mp4` non trovato. Clicca sotto per entrare!")
 
@@ -228,10 +263,10 @@ with tab_gioca:
     col_foto, col_chat = st.columns([1, 2])
     
     with col_foto:
-        # 1. Foto Faccia Personaggio
         mostra_foto(ag_id, f"Faccia di {ag_nome}")
-        # 2. 🏰 FOTO PALAZZO DEL PERSONAGGIO (SUBITO SOTTO!)
         mostra_palazzo_personaggio(ag_id, ag_nome)
+        # 🎬 IL NOSTRO SCHERMO CINEMATOGRAFICO MULTIPLO!
+        mostra_tutti_i_video_personaggio(ag_id, ag_nome)
     
     with col_chat:
         st.markdown(f"### 💬 Parlando con {ag_nome}")
@@ -309,10 +344,9 @@ with tab_lab:
         
         with col_lab_left:
             st.markdown(f"### 🖼️ Scheda di {p_nome}")
-            # Foto del personaggio nel Lab
             mostra_foto(sel_agent_id, f"Faccia di {p_nome}")
-            # 🏰 Foto Palazzo del personaggio nel Lab!
             mostra_palazzo_personaggio(sel_agent_id, p_nome)
+            mostra_tutti_i_video_personaggio(sel_agent_id, p_nome)
             
             st.write(f"**Location Base:** {p_dati.get('location', 'Sconosciuta')}")
             st.write(f"**Biografia:** {p_dati.get('biography', 'Nessuna biografia.')}")
