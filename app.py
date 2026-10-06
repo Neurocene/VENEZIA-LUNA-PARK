@@ -106,7 +106,7 @@ def riproduci_video_generico(nome):
                 st.video(percorso)
                 return True
             except Exception as e:
-                st.warning(f"⚠️️ Errore video: {e}")
+                st.warning(f"⚠️ Errore video: {e}")
                 return False
     return False
 
@@ -128,12 +128,14 @@ if "player_profile" not in st.session_state:
 if "agente_scelto" not in st.session_state:
     st.session_state.agente_scelto = None
 
+# Tracciamo TUTTI i personaggi (compresa ELOISE!)
 if "relazioni_personaggi" not in st.session_state:
     st.session_state.relazioni_personaggi = {
         "rosko": {"incontrato_prima": False, "alleato": False},
         "alberic": {"incontrato_prima": False, "alleato": False},
         "klaus": {"incontrato_prima": False, "alleato": False},
-        "marla": {"incontrato_prima": False, "alleato": False}
+        "marla": {"incontrato_prima": False, "alleato": False},
+        "eloise": {"incontrato_prima": False, "alleato": False}
     }
 
 if "chat_history" not in st.session_state:
@@ -175,9 +177,9 @@ def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
 
     if fase == "lizzie_bar":
         if incontrato:
-            contest_memoria = f"Vi siete già incontrati di giorno a Venezia. Ti ricordi di lui e dei ricordi raccontati ({info_ricordi})."
+            contest_memoria = f"Vi siete già incontrati di giorno a Venezia. Ti ricordi di lui/lei e dei ricordi raccontati ({info_ricordi})."
         else:
-            contest_memoria = f"Non vi siete mai incontrati di persona prima, ma hai sentito parlare di lui dagli altri clienti del bar."
+            contest_memoria = f"Non vi siete mai incontrati di persona prima, ma hai sentito parlare di lui/lei dagli altri clienti del bar."
             
         prompt = (
             f"Tu sei {ag_nome} all'interno del Lizzie Bar di notte.\n"
@@ -210,7 +212,8 @@ QUARTIERI = {
     "cannaregio": {"nome": "📍 Cannaregio", "agente": "rosko", "nome_agente": "Rosko", "compito": "Decifra il messaggio nei canali di Cannaregio!"},
     "san_marco": {"nome": "📍 San Marco", "agente": "alberic", "nome_agente": "Alberic", "compito": "Trova il simbolo nascosto in Piazza San Marco!"},
     "rialto": {"nome": "📍 Rialto", "agente": "klaus", "nome_agente": "Klaus", "compito": "Recupera la cassa perduta al mercato!"},
-    "castello": {"nome": "📍 Castello", "agente": "marla", "nome_agente": "Marla", "compito": "Risolvi l'enigma dell'Arsenale di Castello!"}
+    "castello": {"nome": "📍 Castello", "agente": "marla", "nome_agente": "Marla", "compito": "Risolvi l'enigma dell'Arsenale di Castello!"},
+    "dorsoduro": {"nome": "📍 Dorsoduro", "agente": "eloise", "nome_agente": "Eloise", "compito": "Svela il segreto della galleria d'arte a Dorsoduro!"}
 }
 
 # =========================================================
@@ -296,7 +299,7 @@ if st.session_state.stage == "video_2":
     st.title("🎬 L'Arrivo a Venezia")
     v_ok = riproduci_video_generico("intro_2")
     if not v_ok:
-        st.info("ℹ️️ Video `assets/intro_2.mp4` non trovato. Clicca sotto per entrare!")
+        st.info("ℹ️ Video `assets/intro_2.mp4` non trovato. Clicca sotto per entrare!")
 
     if st.button("🏰 ENTRA A VENEZIA PER ESPLORARE", use_container_width=True):
         st.session_state.stage = "game"
@@ -325,7 +328,7 @@ with tab_gioca:
         mostra_foto("mappa_venezia", "Mappa di Venezia")
         st.caption("Scegli un quartiere per incontrare uno degli abitanti prima che cali la notte:")
         
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1:
             if st.button("📍 Cannaregio (Incontra Rosko)", use_container_width=True):
                 st.session_state.agente_scelto = "cannaregio"
@@ -348,6 +351,12 @@ with tab_gioca:
                 st.session_state.fase_venezia = "prova"
                 st.session_state.in_sfida = False
                 st.rerun()
+        with c3:
+            if st.button("📍 Dorsoduro (Incontra Eloise)", use_container_width=True):
+                st.session_state.agente_scelto = "dorsoduro"
+                st.session_state.fase_venezia = "prova"
+                st.session_state.in_sfida = False
+                st.rerun()
 
     # ---------------------------------------------------------
     # FASE B: INCONTRO QUARTIERE, CHAT & SFIDA 🕵️‍♂️
@@ -361,7 +370,6 @@ with tab_gioca:
         
         st.title(f"{q_info['nome']} — Incontro con {ag_nome}")
         
-        # 🥊 SE ABBIAMO CLICCATO SU "AFFRONTA LA SFIDA", MOSTRA IL VIDEO DELLA SFIDA!
         if st.session_state.in_sfida:
             st.subheader(f"🥊 Missione di {ag_nome}: {q_info['compito']}")
             v_sfida_ok = mostra_video_sfida(ag_id, ag_nome)
@@ -378,7 +386,6 @@ with tab_gioca:
                 st.session_state.in_sfida = False
                 st.rerun()
         else:
-            # 🎬 NORMALE VIDEO PARLATO
             mostra_video_talk(ag_id, ag_nome)
             
             st.subheader(f"💬 Chat con {ag_nome}")
@@ -411,9 +418,8 @@ with tab_gioca:
                 mostra_foto(ag_id, ag_nome)
 
         st.divider()
-        # 🗺️ MAPPA PER SPOSTARSI DA UN ALTRO PERSONAGGIO!
         st.subheader("🗺️ Oppure viaggia verso un altro quartiere di Venezia:")
-        cols_m = st.columns(4)
+        cols_m = st.columns(len(QUARTIERI))
         for idx, (k_q, d_q) in enumerate(QUARTIERI.items()):
             if cols_m[idx].button(f"📍 {d_q['nome_agente']}", key=f"map_btn_{k_q}", use_container_width=True):
                 st.session_state.agente_scelto = k_q
@@ -421,12 +427,11 @@ with tab_gioca:
                 st.rerun()
 
     # ---------------------------------------------------------
-    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸
+    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸 (ORA CON ELOISE!)
     # ---------------------------------------------------------
     elif st.session_state.fase_venezia == "lizzie_bar":
         st.title("🌙 Il Lizzie Bar — Notte")
         
-        # 🏰 FOTO LIZZIE PALACE IN ALTO VICINO AL TITOLO E SEPARATA DALLA GRIGLIA!
         st.markdown("### 🏰 Il Palazzo del Lizzie Bar")
         mostra_palazzo_personaggio("lizzie", "Lizzie Palace")
         
@@ -434,14 +439,13 @@ with tab_gioca:
         st.divider()
 
         st.subheader("👥 Scegli con chi parlare al bancone del bar:")
-        personaggio_bar = st.selectbox("Seleziona cliente al bar:", ["Rosko", "Alberic", "Klaus", "Marla"])
+        # 🟣 ECCO ELOISE AGGIUNTA NELLA LISTA DEI CLIENTE DEL BAR!
+        personaggio_bar = st.selectbox("Seleziona cliente al bar:", ["Rosko", "Alberic", "Klaus", "Marla", "Eloise"])
         ag_bar_id = personaggio_bar.lower()
         
         col_bar_v, col_bar_c = st.columns([1, 1])
         with col_bar_v:
-            # 📸 FOTO DEL PERSONAGGIO AL BAR
             mostra_foto_lizziebar(ag_bar_id, f"{personaggio_bar} al Lizzie Bar")
-            # 🎬 VIDEO DEL PERSONAGGIO AL BAR SOTTO LA SUA FOTO
             mostra_video_lizzietalk(ag_bar_id, personaggio_bar)
             
             if st.session_state.relazioni_personaggi[ag_bar_id]["incontrato_prima"]:
@@ -472,14 +476,15 @@ with tab_gioca:
         st.subheader("🚪 Il Backstage di Lizzie")
         
         prove_superate_totali = sum(1 for p in st.session_state.relazioni_personaggi.values() if p["alleato"])
+        totale_prove_richieste = len(st.session_state.relazioni_personaggi)
         
-        if prove_superate_totali == 4:
-            st.success("🟢 Hai superato tutte e 4 le prove! I gorilla ti lasciano passare nel backstage!")
+        if prove_superate_totali >= 4: # Richiede almeno 4 alleanze per passare!
+            st.success("🟢 Hai superato le prove degli agenti! I gorilla ti lasciano passare nel backstage!")
             if st.button("🚪 ENTRA NEL BACKSTAGE DA LIZZIE", use_container_width=True):
                 st.session_state.fase_venezia = "backstage"
                 st.rerun()
         else:
-            st.warning(f"🔒 Prove superate: {prove_superate_totali}/4. Devi completare tutte e 4 le prove degli agenti prima di entrare da Lizzie!")
+            st.warning(f"🔒 Prove superate: {prove_superate_totali}/{totale_prove_richieste}. Devi completare più prove prima di entrare da Lizzie!")
             
             if st.button("🔓 [TRUCCO MAGICO] UNBLOCK: SBLOCCA LIZZIE SUBITO!", use_container_width=True):
                 for p_key in st.session_state.relazioni_personaggi:
