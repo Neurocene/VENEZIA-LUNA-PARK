@@ -30,7 +30,7 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
     else:
-        st.info(f"🖼️️ [Manca l'immagine {nome}.png dentro assets/]")
+        st.info(f"🖼️ [Manca l'immagine {nome}.png dentro la cartella assets/]")
 
 def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
     nome_file_palazzo = f"{id_personaggio}_palace"
@@ -320,7 +320,7 @@ with tab_gioca:
         box_chat = st.container(height=200)
         with box_chat:
             for m in st.session_state.chat_history[ag_id]:
-                st.chat_message(m["role"]).write(m["content"])
+                st.chat_message(msg["role"] if (msg := m) else "user").write(m["content"])
             
         frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"chat_{ag_id}")
         if st.button("💬 Invia Messaggio", key=f"btn_{ag_id}"):
@@ -345,14 +345,23 @@ with tab_gioca:
             st.rerun()
 
     # ---------------------------------------------------------
-    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸 (MEMORIA EVOLUTA)
+    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸 (CON FOTO E VIDEO DI LIZZIE IN ALTO!)
     # ---------------------------------------------------------
     elif st.session_state.fase_venezia == "lizzie_bar":
         st.title("🌙 Il Lizzie Bar — Notte")
         st.caption("È calata la notte su Venezia. Tutti i personaggi si sono ritrovati al bancone del bar!")
-        mostra_foto("copertina", "Interno del Lizzie Bar")
         
-        st.subheader("👥 Scegli con chi parlare al bancone:")
+        # 👑 MOSTRA LA FOTO E IL VIDEO DI PRESENTAZIONE DEL LIZZIE BAR IN ALTO!
+        col_liz_foto, col_liz_video = st.columns([1, 2])
+        with col_liz_foto:
+            mostra_foto("lizzie", "Insegna del Lizzie Bar")
+        with col_liz_video:
+            v_lizzie_ok = mostra_video_talk("lizzie", "Lizzie")
+            if not v_lizzie_ok:
+                st.info("ℹ️ Carica `lizzie_talk.mp4` in `assets/` per vedere il video di benvenuto!")
+
+        st.divider()
+        st.subheader("👥 Scegli con chi parlare al bancone del bar:")
         personaggio_bar = st.selectbox("Seleziona cliente al bar:", ["Rosko", "Alberic", "Klaus", "Marla"])
         ag_bar_id = personaggio_bar.lower()
         
