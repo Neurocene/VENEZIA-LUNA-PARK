@@ -32,7 +32,6 @@ def mostra_foto(nome, didascalia=""):
     else:
         st.info(f"🖼️ [Manca l'immagine {nome}.png dentro la cartella assets/]")
 
-# 📸 FOTO SPECIALE PER IL LIZZIE BAR (cerca lizzietalk.jpg o lizziebar.jpg)
 def mostra_foto_lizziebar(id_personaggio, didascalia=""):
     nomi_da_provare = [
         f"{id_personaggio}_lizzietalk", 
@@ -46,7 +45,6 @@ def mostra_foto_lizziebar(id_personaggio, didascalia=""):
             st.image(percorso, caption=didascalia, use_container_width=True)
             return True
             
-    # Se la foto speciale non c'è, usiamo la foto normale del personaggio!
     mostra_foto(id_personaggio, didascalia)
     return False
 
@@ -55,6 +53,8 @@ def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
     percorso = trova_foto(nome_file_palazzo)
     if percorso:
         st.image(percorso, caption=f"🏰 Palazzo di {nome_personaggio}", use_container_width=True)
+    else:
+        st.caption(f"🏚️️ [Manca la foto {nome_file_palazzo}.jpg in assets/]")
 
 def mostra_video_talk(id_personaggio, nome_personaggio):
     nomi_da_provare = [f"{id_personaggio}_talk", f"{id_personaggio}.talk"]
@@ -70,7 +70,6 @@ def mostra_video_talk(id_personaggio, nome_personaggio):
                     return False
     return False
 
-# 🎬 VIDEO SPECIALE PER IL LIZZIE BAR (.mp4)
 def mostra_video_lizzietalk(id_personaggio, nome_personaggio):
     nomi_da_provare = [f"{id_personaggio}_lizzietalk", f"{id_personaggio}.lizzietalk"]
     for nome_f in nomi_da_provare:
@@ -302,7 +301,7 @@ tab_gioca, tab_lab, tab_diagnostica = st.tabs(["🎮 Gioca & Esplora", "🎭 Cha
 with tab_gioca:
 
     # ---------------------------------------------------------
-    # FASE A: ESPLORAZIONE DIURNA DEI QUARTIERI 🛶
+    # FASE A: ESPLORAZIONE DIURNA DEI QUARTIERI 旬
     # ---------------------------------------------------------
     if st.session_state.fase_venezia == "esplorazione":
         st.title("🏰 Venezia — Scegli quale Quartiere Esplorare")
@@ -380,14 +379,6 @@ with tab_gioca:
         st.title("🌙 Il Lizzie Bar — Notte")
         st.caption("È calata la notte su Venezia. Tutti i personaggi si sono ritrovati al bancone del bar!")
         
-        col_liz_foto, col_liz_video = st.columns([1, 2])
-        with col_liz_foto:
-            mostra_foto("lizzie", "Insegna del Lizzie Bar")
-        with col_liz_video:
-            v_lizzie_ok = mostra_video_talk("lizzie", "Lizzie")
-            if not v_lizzie_ok:
-                st.info("ℹ️ Carica `lizzie_talk.mp4` in `assets/` per vedere il video!")
-
         st.divider()
         st.subheader("👥 Scegli con chi parlare al bancone del bar:")
         personaggio_bar = st.selectbox("Seleziona cliente al bar:", ["Rosko", "Alberic", "Klaus", "Marla"])
@@ -395,11 +386,15 @@ with tab_gioca:
         
         col_bar_v, col_bar_c = st.columns([1, 1])
         with col_bar_v:
-            # 🎬 PROVA PRIMA A MOSTRARE IL VIDEO DA BAR (.mp4)
-            ha_video_bar = mostra_video_lizzietalk(ag_bar_id, personaggio_bar)
-            
-            # 📸 MOSTRA LA FOTO SPECIALE DA BAR (cerca lizzietalk.jpg o lizziebar.jpg)
-            mostra_foto_lizziebar(ag_bar_id, f"{personaggio_bar} al Lizzie Bar")
+            # 🏰 FOTO AFFIANCATE: LIZZIE PALACE E PERSONAGGIO
+            col_pala, col_pers = st.columns(2)
+            with col_pala:
+                mostra_palazzo_personaggio("lizzie", "Lizzie Palace")
+            with col_pers:
+                mostra_foto_lizziebar(ag_bar_id, f"{personaggio_bar} al Lizzie Bar")
+                
+            # 🎬 VIDEO SOTTO LA FOTO DEL PERSONAGGIO
+            mostra_video_lizzietalk(ag_bar_id, personaggio_bar)
             
             if st.session_state.relazioni_personaggi[ag_bar_id]["incontrato_prima"]:
                 st.success(f"🟢 {personaggio_bar} si ricorda del vostro incontro a Venezia!")
@@ -428,24 +423,53 @@ with tab_gioca:
         st.divider()
         st.subheader("🚪 Il Backstage di Lizzie")
         
-        if st.button("🚪 PROVA AD ENTRARE NEL BACKSTAGE DA LIZZIE", use_container_width=True):
-            alleati = sum(1 for p in st.session_state.relazioni_personaggi.values() if p["alleato"])
-            if alleati >= 1:
+        # CONTROLLO SE TUTTE E 4 LE PROVE SONO STATE SUPERATE!
+        prove_superate_totali = sum(1 for p in st.session_state.relazioni_personaggi.values() if p["alleato"])
+        
+        if prove_superate_totali == 4:
+            st.success("🟢 Hai superato tutte e 4 le prove! I gorilla ti lasciano passare nel backstage!")
+            if st.button("🚪 ENTRA NEL BACKSTAGE DA LIZZIE", use_container_width=True):
                 st.session_state.fase_venezia = "backstage"
                 st.rerun()
-            else:
-                st.error("🚫 I gorilla all'ingresso ti bloccano: 'Nessuno dei clienti del bar garantisce per te!'")
+        else:
+            st.warning(f"🔒 Prove superate: {prove_superate_totali}/4. Devi completare le prove di tutti e 4 i personaggi a Venezia prima che il video di Lizzie apparirà nel backstage!")
+            st.button("🚪 PROVA AD ENTRARE NEL BACKSTAGE (Accesso Bloccato)", disabled=True, use_container_width=True)
 
     # ---------------------------------------------------------
     # FASE D: IL BACKSTAGE DI LIZZIE 👑📦
+    # (VISIBILE SOLO DOPO AVER SUPERATO TUTTE E 4 LE PROVE!)
     # ---------------------------------------------------------
     elif st.session_state.fase_venezia == "backstage":
-        st.title("👑 Il Backstage di Lizzie")
-        mostra_video_talk("lizzie", "Lizzie")
-        mostra_foto("lizzie", "Lizzie")
-        st.balloons()
-        st.success("🏆 MISSIONE COMPIUTA! I tuoi alleati ti hanno fatto passare e hai consegnato il pacco a Lizzie!")
+        st.title("👑 Il Backstage del Lizzie Bar")
         
+        col_liz_f, col_liz_v = st.columns([1, 2])
+        with col_liz_f:
+            mostra_foto("lizzie", "Lizzie")
+        with col_liz_v:
+            mostra_video_talk("lizzie", "Lizzie")
+
+        st.balloons()
+        st.success("🏆 MISSIONE COMPIUTA! Hai superato tutte e 4 le prove, guadagnato la fiducia degli agenti e puoi finalmente parlare con Lizzie e consegnarle il pacco!")
+        
+        # Chat finale con Lizzie
+        st.subheader("💬 Chat Finale con Lizzie")
+        if "lizzie_chat" not in st.session_state.chat_history:
+            st.session_state.chat_history["lizzie_chat"] = []
+
+        box_lizzie = st.container(height=200)
+        with box_lizzie:
+            for m in st.session_state.chat_history["lizzie_chat"]:
+                st.chat_message(m["role"]).write(m["content"])
+
+        msg_lizzie = st.text_input("Cosa dici a Lizzie?:", key="in_lizzie")
+        if st.button("💬 Consegna il Pacco e Parla con Lizzie", key="btn_lizzie"):
+            if msg_lizzie.strip():
+                st.session_state.chat_history["lizzie_chat"].append({"role": "user", "content": msg_lizzie})
+                risp_l = genera_risposta_ai("Lizzie", "lizzie", msg_lizzie)
+                st.session_state.chat_history["lizzie_chat"].append({"role": "assistant", "content": risp_l})
+                st.rerun()
+
+        st.divider()
         if st.button("🔄 GIOCA ANCORA UNA NUOVA AVVENTURA", use_container_width=True):
             st.session_state.stage = "login"
             st.session_state.fase_venezia = "esplorazione"
