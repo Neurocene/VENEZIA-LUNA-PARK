@@ -16,7 +16,7 @@ os.makedirs("assets", exist_ok=True)
 os.makedirs("data", exist_ok=True)
 
 # ---------------------------------------------------------
-# 2. FUNZIONI MAGICHE PER FOTO E VIDEO 🖼️🎬
+# 2. FUNZIONI PER FOTO E VIDEO AUTOMATICI 🖼️🎬
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -30,17 +30,23 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
     else:
-        st.info(f"🖼️ [Manca l'immagine {nome}.png dentro assets/]")
+        st.info(f"🖼️ [Manca l'immagine {nome}.png dentro la cartella assets/]")
 
-# 📸 FOTO SPECIALE PER IL LIZZIE BAR (personaggio_lizziebar.jpg)
+# 📸 FOTO SPECIALE PER IL LIZZIE BAR (cerca lizzietalk.jpg o lizziebar.jpg)
 def mostra_foto_lizziebar(id_personaggio, didascalia=""):
-    nomi_da_provare = [f"{id_personaggio}_lizziebar", f"{id_personaggio}.lizziebar"]
+    nomi_da_provare = [
+        f"{id_personaggio}_lizzietalk", 
+        f"{id_personaggio}.lizzietalk",
+        f"{id_personaggio}_lizziebar", 
+        f"{id_personaggio}.lizziebar"
+    ]
     for nome_f in nomi_da_provare:
         percorso = trova_foto(nome_f)
         if percorso:
             st.image(percorso, caption=didascalia, use_container_width=True)
             return True
-    # Se la foto speciale da bar non c'è ancora, usiamo quella classica!
+            
+    # Se la foto speciale non c'è, usiamo la foto normale del personaggio!
     mostra_foto(id_personaggio, didascalia)
     return False
 
@@ -64,7 +70,7 @@ def mostra_video_talk(id_personaggio, nome_personaggio):
                     return False
     return False
 
-# 🎬 VIDEO SPECIALE PER IL LIZZIE BAR (personaggio_lizzietalk.mp4)
+# 🎬 VIDEO SPECIALE PER IL LIZZIE BAR (.mp4)
 def mostra_video_lizzietalk(id_personaggio, nome_personaggio):
     nomi_da_provare = [f"{id_personaggio}_lizzietalk", f"{id_personaggio}.lizzietalk"]
     for nome_f in nomi_da_provare:
@@ -77,8 +83,7 @@ def mostra_video_lizzietalk(id_personaggio, nome_personaggio):
                     return True
                 except Exception:
                     return False
-    # Se il video da bar non c'è ancora, usiamo quello classico!
-    return mostra_video_talk(id_personaggio, nome_personaggio)
+    return False
 
 def riproduci_video_generico(nome):
     for est in [".mp4", ".MP4"]:
@@ -93,7 +98,7 @@ def riproduci_video_generico(nome):
     return False
 
 # ---------------------------------------------------------
-# 3. MEMORIA E STATI DEL GIOCO 🧠
+# 3. STATO INIZIALE DEL GIOCO E MEMORIA 🧠
 # ---------------------------------------------------------
 if "stage" not in st.session_state:
     st.session_state.stage = "login"
@@ -145,7 +150,7 @@ def ottieni_api_key():
 def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
     api_k = ottieni_api_key()
     if not api_k:
-        return f"«{ag_nome} ti fissa in silenzio... (Incolla la chiave API nel Character's Lab!)»"
+        return f"«{ag_nome} ti fissa in silenzio... (Incolla la chiave API nel Character's Lab per farlo parlare!)»"
     
     info_relazione = st.session_state.relazioni_personaggi.get(ag_id, {})
     incontrato = info_relazione.get("incontrato_prima", False)
@@ -369,7 +374,7 @@ with tab_gioca:
             st.rerun()
 
     # ---------------------------------------------------------
-    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸 (PROPRIETÀ NUOVE FOTO/VIDEO)
+    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸
     # ---------------------------------------------------------
     elif st.session_state.fase_venezia == "lizzie_bar":
         st.title("🌙 Il Lizzie Bar — Notte")
@@ -390,10 +395,10 @@ with tab_gioca:
         
         col_bar_v, col_bar_c = st.columns([1, 1])
         with col_bar_v:
-            # 🎬 QUI CERCA IL NUOVO VIDEO (es: rosko_lizzietalk.mp4)
-            mostra_video_lizzietalk(ag_bar_id, personaggio_bar)
+            # 🎬 PROVA PRIMA A MOSTRARE IL VIDEO DA BAR (.mp4)
+            ha_video_bar = mostra_video_lizzietalk(ag_bar_id, personaggio_bar)
             
-            # 📸 QUI CERCA LA NUOVA FOTO (es: rosko_lizziebar.jpg)
+            # 📸 MOSTRA LA FOTO SPECIALE DA BAR (cerca lizzietalk.jpg o lizziebar.jpg)
             mostra_foto_lizziebar(ag_bar_id, f"{personaggio_bar} al Lizzie Bar")
             
             if st.session_state.relazioni_personaggi[ag_bar_id]["incontrato_prima"]:
