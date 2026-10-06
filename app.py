@@ -32,6 +32,18 @@ def mostra_foto(nome, didascalia=""):
     else:
         st.info(f"🖼️ [Manca l'immagine {nome}.png dentro la cartella assets/]")
 
+# 📸 FOTO SPECIALE PER IL LIZZIE BAR (personaggio_lizziebar.jpg)
+def mostra_foto_lizziebar(id_personaggio, didascalia=""):
+    nomi_da_provare = [f"{id_personaggio}_lizziebar", f"{id_personaggio}.lizziebar"]
+    for nome_f in nomi_da_provare:
+        percorso = trova_foto(nome_f)
+        if percorso:
+            st.image(percorso, caption=didascalia, use_container_width=True)
+            return True
+    # Se non c'è la foto speciale da bar, usa quella normale!
+    mostra_foto(id_personaggio, didascalia)
+    return False
+
 def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
     nome_file_palazzo = f"{id_personaggio}_palace"
     percorso = trova_foto(nome_file_palazzo)
@@ -52,6 +64,22 @@ def mostra_video_talk(id_personaggio, nome_personaggio):
                     return False
     return False
 
+# 🎬 VIDEO SPECIALE PARLATO AL LIZZIE BAR (personaggio_lizzietalk.mp4)
+def mostra_video_lizzietalk(id_personaggio, nome_personaggio):
+    nomi_da_provare = [f"{id_personaggio}_lizzietalk", f"{id_personaggio}.lizzietalk"]
+    for nome_f in nomi_da_provare:
+        for est in [".mp4", ".MP4"]:
+            percorso = os.path.join("assets", f"{nome_f}{est}")
+            if os.path.exists(percorso):
+                try:
+                    st.caption(f"🎬 {nome_personaggio} al Lizzie Bar:")
+                    st.video(percorso)
+                    return True
+                except Exception:
+                    return False
+    # Se non c'è il video da bar, mostra quello talk normale!
+    return mostra_video_talk(id_personaggio, nome_personaggio)
+
 def riproduci_video_generico(nome):
     for est in [".mp4", ".MP4"]:
         percorso = os.path.join("assets", f"{nome}{est}")
@@ -68,10 +96,10 @@ def riproduci_video_generico(nome):
 # 3. STATO INIZIALE DEL GIOCO E MEMORIA 🧠
 # ---------------------------------------------------------
 if "stage" not in st.session_state:
-    st.session_state.stage = "login"  # login -> video_1 -> questionnaire -> video_2 -> game
+    st.session_state.stage = "login"
 
 if "fase_venezia" not in st.session_state:
-    st.session_state.fase_venezia = "esplorazione" # esplorazione -> prova -> lizzie_bar -> backstage
+    st.session_state.fase_venezia = "esplorazione"
 
 if "player_profile" not in st.session_state:
     st.session_state.player_profile = {}
@@ -79,7 +107,6 @@ if "player_profile" not in st.session_state:
 if "agente_scelto" not in st.session_state:
     st.session_state.agente_scelto = None
 
-# Tracciamo le relazioni e le amicizie con gli abitanti!
 if "relazioni_personaggi" not in st.session_state:
     st.session_state.relazioni_personaggi = {
         "rosko": {"incontrato_prima": False, "alleato": False},
@@ -115,13 +142,10 @@ def ottieni_api_key():
     except Exception:
         return ""
 
-# ---------------------------------------------------------
-# 🧠 AI CON DOPPIA MEMORIA (Venezia di Giorno vs Bar di Notte)
-# ---------------------------------------------------------
 def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
     api_k = ottieni_api_key()
     if not api_k:
-        return f"«{ag_nome} ti fissa in silenzio... (Incolla e testa la chiave API nel Character's Lab per farlo parlare!)»"
+        return f"«{ag_nome} ti fissa in silenzio... (Incolla la chiave API nel Character's Lab per farlo parlare!)»"
     
     info_relazione = st.session_state.relazioni_personaggi.get(ag_id, {})
     incontrato = info_relazione.get("incontrato_prima", False)
@@ -130,7 +154,7 @@ def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
 
     if fase == "lizzie_bar":
         if incontrato:
-            contest_memoria = f"Vi siete già incontrati di giorno a Venezia. Ti ricordi di lui e dei ricordi che ha raccontato ({info_ricordi})."
+            contest_memoria = f"Vi siete già incontrati di giorno a Venezia. Ti ricordi di lui e dei ricordi raccontati ({info_ricordi})."
         else:
             contest_memoria = f"Non vi siete mai incontrati di persona prima, ma hai sentito parlare di lui dagli altri clienti del bar."
             
@@ -199,7 +223,7 @@ if st.session_state.stage == "video_1":
     st.stop()
 
 # =========================================================
-# STAGE 3: MARGINI DELLA LAGUNA + LAGOON PIGS + QUESTIONARIO 🌊🐷
+# STAGE 3: MARGINI DELLA LAGUNA + QUESTIONARIO 🌊🐷
 # =========================================================
 if st.session_state.stage == "questionnaire":
     st.title("🌊 Margini della Laguna — Incontro con i Lagoon Pigs & Ricordi")
@@ -211,7 +235,7 @@ if st.session_state.stage == "questionnaire":
     with col_brago_v:
         v_brago_ok = riproduci_video_generico("brago_video")
         if not v_brago_ok:
-            st.info("ℹ️ Carica `brago_video.mp4` nella cartella `assets/` per vedere il video dei Lagoon Pigs!")
+            st.info("ℹ️ Carica `brago_video.mp4` in `assets/` per vedere il video dei Lagoon Pigs!")
 
     st.divider()
 
@@ -273,7 +297,7 @@ tab_gioca, tab_lab, tab_diagnostica = st.tabs(["🎮 Gioca & Esplora", "🎭 Cha
 with tab_gioca:
 
     # ---------------------------------------------------------
-    # FASE A: ESPLORAZIONE DIURNA DEI QUARTIERI DI VENEZIA 🛶
+    # FASE A: ESPLORAZIONE DIURNA DEI QUARTIERI 🛶
     # ---------------------------------------------------------
     if st.session_state.fase_venezia == "esplorazione":
         st.title("🏰 Venezia — Scegli quale Quartiere Esplorare")
@@ -301,7 +325,7 @@ with tab_gioca:
                 st.rerun()
 
     # ---------------------------------------------------------
-    # FASE B: INCONTRO QUARTIERE E PROVA DELL'AGENTE 🕵️‍♂️
+    # FASE B: INCONTRO QUARTIERE E PROVA 🕵️‍♂️️
     # ---------------------------------------------------------
     elif st.session_state.fase_venezia == "prova":
         q_info = QUARTIERI[st.session_state.agente_scelto]
@@ -320,7 +344,7 @@ with tab_gioca:
         box_chat = st.container(height=200)
         with box_chat:
             for m in st.session_state.chat_history[ag_id]:
-                st.chat_message(msg["role"] if (msg := m) else "user").write(m["content"])
+                st.chat_message(m["role"]).write(m["content"])
             
         frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"chat_{ag_id}")
         if st.button("💬 Invia Messaggio", key=f"btn_{ag_id}"):
@@ -345,20 +369,19 @@ with tab_gioca:
             st.rerun()
 
     # ---------------------------------------------------------
-    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸 (CON FOTO E VIDEO DI LIZZIE IN ALTO!)
+    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸 (USA VIDEO E FOTO DEL BAR!)
     # ---------------------------------------------------------
     elif st.session_state.fase_venezia == "lizzie_bar":
         st.title("🌙 Il Lizzie Bar — Notte")
         st.caption("È calata la notte su Venezia. Tutti i personaggi si sono ritrovati al bancone del bar!")
         
-        # 👑 MOSTRA LA FOTO E IL VIDEO DI PRESENTAZIONE DEL LIZZIE BAR IN ALTO!
         col_liz_foto, col_liz_video = st.columns([1, 2])
         with col_liz_foto:
             mostra_foto("lizzie", "Insegna del Lizzie Bar")
         with col_liz_video:
             v_lizzie_ok = mostra_video_talk("lizzie", "Lizzie")
             if not v_lizzie_ok:
-                st.info("ℹ️ Carica `lizzie_talk.mp4` in `assets/` per vedere il video di benvenuto!")
+                st.info("ℹ️ Carica `lizzie_talk.mp4` in `assets/` per vedere il video!")
 
         st.divider()
         st.subheader("👥 Scegli con chi parlare al bancone del bar:")
@@ -367,8 +390,11 @@ with tab_gioca:
         
         col_bar_v, col_bar_c = st.columns([1, 1])
         with col_bar_v:
-            mostra_video_talk(ag_bar_id, personaggio_bar)
-            mostra_foto(ag_bar_id, personaggio_bar)
+            # 🎬 USIAMO IL NUOVO VIDEO SPECIALE PER IL LIZZIE BAR! (personaggio_lizzietalk.mp4)
+            mostra_video_lizzietalk(ag_bar_id, personaggio_bar)
+            
+            # 📸 USIAMO LA NUOVA FOTO SPECIALE PER IL LIZZIE BAR! (personaggio_lizziebar.jpg)
+            mostra_foto_lizziebar(ag_bar_id, f"{personaggio_bar} al Lizzie Bar")
             
             if st.session_state.relazioni_personaggi[ag_bar_id]["incontrato_prima"]:
                 st.success(f"🟢 {personaggio_bar} si ricorda del vostro incontro a Venezia!")
