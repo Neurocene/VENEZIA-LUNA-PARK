@@ -8,15 +8,15 @@ from google import genai
 from story_factory import EventBus, StoryFactory
 
 # ---------------------------------------------------------
-# 1. CONFIGURAZIONE BASE DEL GIOCO
+# 1. CONFIGURAZIONE BASE
 # ---------------------------------------------------------
-st.set_page_config(page_title="Venezia Luna Park", layout="wide", page_icon="🎭")
+st.set_page_config(page_title="Venezia Luna Park — Lizzie Bar", layout="wide", page_icon="🎭")
 
 os.makedirs("assets", exist_ok=True)
 os.makedirs("data", exist_ok=True)
 
 # ---------------------------------------------------------
-# 2. FUNZIONI PER FOTO E VIDEO AUTOMATICI
+# 2. FUNZIONI PER FOTO E VIDEO AUTOMATICI 🖼️🎬
 # ---------------------------------------------------------
 def trova_foto(nome):
     for est in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
@@ -30,19 +30,9 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
     else:
-        st.info(f"🖼️️ [Manca la foto {nome}.png dentro assets/]")
+        st.info(f"🖼️ [Carica {nome}.png in assets/]")
 
-def mostra_palazzo_personaggio(id_personaggio, nome_personaggio):
-    nome_file_palazzo = f"{id_personaggio}_palace"
-    percorso = trova_foto(nome_file_palazzo)
-    if percorso:
-        st.image(percorso, caption=f"🏰 Palazzo di {nome_personaggio}", use_container_width=True)
-    else:
-        st.caption(f"🏚️ [Manca la foto del palazzo {id_personaggio}_palace.jpg in assets/]")
-
-# 🎬 VIDEO CHE PARLA (SOPRA LA CHAT)
 def mostra_video_talk(id_personaggio, nome_personaggio):
-    # Cerca sia id_talk.mp4 che id.talk.mp4
     nomi_da_provare = [f"{id_personaggio}_talk", f"{id_personaggio}.talk"]
     for nome_f in nomi_da_provare:
         for est in [".mp4", ".MP4"]:
@@ -52,41 +42,36 @@ def mostra_video_talk(id_personaggio, nome_personaggio):
                     st.caption(f"🎬 {nome_personaggio} ti sta parlando:")
                     st.video(percorso)
                     return True
-                except Exception as e:
-                    st.warning(f"⚠️ Errore video: {e}")
+                except Exception:
                     return False
-    st.info(f"🎥 [Per vedere il video qui sopra, carica il file {id_personaggio}_talk.mp4 nella cartella assets/]")
-    return False
-
-def riproduci_video_generico(nome):
-    for est in [".mp4", ".MP4"]:
-        percorso = os.path.join("assets", f"{nome}{est}")
-        if os.path.exists(percorso):
-            try:
-                st.video(percorso)
-                return True
-            except Exception as e:
-                st.warning(f"⚠️ Errore video: {e}")
-                return False
     return False
 
 # ---------------------------------------------------------
-# 3. GESTIONE STATO DEL GIOCO
+# 3. STATO INIZIALE E MEMORIA DEI PERSONAGGI 🧠
 # ---------------------------------------------------------
-if "stage" not in st.session_state:
-    st.session_state.stage = "login"
+if "fase_gioco" not in st.session_state:
+    st.session_state.fase_gioco = "laguna"  # laguna -> venezia -> prova -> lizzie_bar -> backstage
 
-if "player_profile" not in st.session_state:
-    st.session_state.player_profile = {}
+if "agente_scelto" not in st.session_state:
+    st.session_state.agente_scelto = None
+
+# Tracciamo quali personaggi abbiamo incontrato e le loro alleanze
+if "relazioni_personaggi" not in st.session_state:
+    st.session_state.relazioni_personaggi = {
+        "rosko": {"incontrato_prima": False, "alleato": False},
+        "alberic": {"incontrato_prima": False, "alleato": False},
+        "klaus": {"incontrato_prima": False, "alleato": False},
+        "marla": {"incontrato_prima": False, "alleato": False}
+    }
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = {}
 
 if "event_bus" not in st.session_state:
     st.session_state.event_bus = EventBus()
 
 if "story_factory" not in st.session_state:
     st.session_state.story_factory = StoryFactory(st.session_state.event_bus)
-
-if "chiave_verificata_ok" not in st.session_state:
-    st.session_state.chiave_verificata_ok = False
 
 @st.cache_data
 def carica_mondo():
@@ -103,279 +88,220 @@ def ottieni_api_key():
     except Exception:
         return ""
 
-def genera_risposta_ai(ag_nome, frase_giocatore):
+# ---------------------------------------------------------
+# 🧠 GENERATORE RISPOSTE AI CON DOPPIA MEMORIA (Venezia vs Lizzie Bar)
+# ---------------------------------------------------------
+def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
     api_k = ottieni_api_key()
     if not api_k:
-        return "«Non posso parlare ora: incolla e testa la tua chiave API nel Character's Lab!»"
+        return f"«{ag_nome} ti osserva... (Incolla la chiave API nel Character's Lab per attivare l'AI!)»"
     
+    info_relazione = st.session_state.relazioni_personaggi.get(ag_id, {})
+    incontrato = info_relazione.get("incontrato_prima", False)
+    fase = st.session_state.fase_gioco
+
+    # COSTRUIAMO IL PROMPT IN BASE ALLA FASE DEL GIOCO
+    if fase == "lizzie_bar":
+        # Memoria Evoluta nel Bar di Notte!
+        if incontrato:
+            contest_memoria = f"Vi siete già incontrati prima a Venezia. Ti ricordi di lui e ti fa piacere rivederlo al bar ora che è notte."
+        else:
+            contest_memoria = f"Non vi siete mai incontrati di persona a Venezia, ma ne hai sentito parlare dagli altri abitanti al bancone del bar."
+            
+        prompt = (
+            f"Tu sei {ag_nome} all'interno del rumoroso e cupo Lizzie Bar di notte.\n"
+            f"Evoluzione del personaggio: {contest_memoria}\n"
+            f"Rispondi in modo informale, misterioso e adatto all'ambiente di un locale notturno in max 2 frasi in italiano.\n"
+            f"Il giocatore ti dice: '{frase_giocatore}'"
+        )
+    else:
+        # Memoria Primo Incontro a Venezia
+        prompt = f"Tu sei {ag_nome} nel suo quartiere di Venezia. Rispondi in modo misterioso ed enigmatico in 2 frasi a: '{frase_giocatore}'"
+
     try:
         client = genai.Client(api_key=api_k)
-        info_ricordi = json.dumps(st.session_state.player_profile, ensure_ascii=False)
-        prompt = (
-            f"Tu sei {ag_nome} nel gioco Venezia Luna Park.\n"
-            f"I ricordi raccontati dal giocatore sono: {info_ricordi}.\n"
-            f"Rispondi brevemente in italiano (max 2-3 frasi), restando nel personaggio.\n"
-            f"Il giocatore dice: '{frase_giocatore}'"
-        )
-        modelli = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+        modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
         for mod in modelli:
             try:
                 resp = client.models.generate_content(model=mod, contents=prompt)
-                if resp and hasattr(resp, 'text') and resp.text:
+                if resp and resp.text:
                     return resp.text.strip()
             except Exception:
                 continue
-        return "⚠️ Errore di connessione ai modelli Gemini."
+        return "⚠️ Errore di connessione AI."
     except Exception as e:
         return f"⚠️ Errore AI: {e}"
 
-# ---------------------------------------------------------
-# STAGE 1: INGRESSO CON PASSWORD
-# ---------------------------------------------------------
-if st.session_state.stage == "login":
-    st.title("🎭 Venezia Luna Park — Accesso")
-    mostra_foto("copertina", "Benvenuto a Venezia Luna Park")
-    
-    pwd = st.text_input("🔒 Codice di Accesso:", type="password")
-    if st.button("🚪 ENTRA NEL MONDO", use_container_width=True) or pwd == "venezia2026":
-        if pwd == "venezia2026" or pwd == st.secrets.get("APP_ACCESS_CODE", "venezia2026"):
-            st.session_state.stage = "video_1"
-            st.rerun()
-        elif pwd != "":
-            st.error("❌ Codice errato!")
-    st.stop()
+QUARTIERI = {
+    "cannaregio": {"nome": "📍 Cannaregio", "agente": "rosko", "nome_agente": "Rosko", "compito": "Decifra il messaggio nei canali di Cannaregio!"},
+    "san_marco": {"nome": "📍 San Marco", "agente": "alberic", "nome_agente": "Alberic", "compito": "Trova il simbolo nascosto in Piazza San Marco!"},
+    "rialto": {"nome": "📍 Rialto", "agente": "klaus", "nome_agente": "Klaus", "compito": "Recupera la cassa perduta al mercato!"},
+    "castello": {"nome": "📍 Castello", "agente": "marla", "nome_agente": "Marla", "compito": "Risolvi l'enigma dell'Arsenale di Castello!"}
+}
 
 # ---------------------------------------------------------
-# STAGE 2: PRIMO VIDEO (intro_1.mp4)
+# INTERFACCIA DI GIOCO
 # ---------------------------------------------------------
-if st.session_state.stage == "video_1":
-    st.title("🎬 Inizio del Viaggio")
-    v_ok = riproduci_video_generico("intro_1")
-    if not v_ok:
-        st.info("ℹ️ Video `assets/intro_1.mp4` non trovato. Clicca sotto per proseguire!")
+tab_gioca, tab_lab = st.tabs(["🎮 Gioca la Storia", "🎭 Character's Lab"])
 
-    if st.button("▶ VAI AL QUESTIONARIO DEI RICORDI", use_container_width=True):
-        st.session_state.stage = "questionnaire"
-        st.rerun()
-    st.stop()
-
-# ---------------------------------------------------------
-# STAGE 3: BRAGO + QUESTIONARIO DEI RICORDI
-# ---------------------------------------------------------
-if st.session_state.stage == "questionnaire":
-    st.title("🎬 Messaggio di Brago & 📋 Domande sul tuo Passato")
-    st.caption("Guarda il video di Brago e poi rispondi alle domande per scoprire chi sei...")
-    
-    col_brago_f, col_brago_v = st.columns([1, 2])
-    with col_brago_f:
-        mostra_foto("brago", "Brago — Il Custode dell'Ingresso")
-    with col_brago_v:
-        v_brago_ok = riproduci_video_generico("brago_video")
-        if not v_brago_ok:
-            st.info("ℹ️ Carica `brago_video.mp4` nella cartella `assets/` per vederlo qui!")
-
-    st.divider()
-
-    percorso_q = os.path.join("data", "questions.json")
-    domande = []
-    if os.path.exists(percorso_q):
-        with open(percorso_q, "r", encoding="utf-8") as f:
-            domande = json.load(f)
-
-    with st.form("form_questionario"):
-        risposte = {}
-        for q in domande:
-            if q["type"] == "text":
-                risposte[q["id"]] = st.text_input(q["question"])
-            elif q["type"] == "choice":
-                risposte[q["id"]] = st.selectbox(q["question"], q["options"])
-            elif q["type"] == "scale":
-                risposte[q["id"]] = st.slider(q["question"], 1, 10, 5)
-        
-        inviato = st.form_submit_button("💾 CONFERMA RICORDI E PROSEGUI")
-        if inviato:
-            st.session_state.player_profile = risposte
-            st.session_state.event_bus.registra_evento(
-                "profilo_ricordi", "Sistema", "Protagonista", json.dumps(risposte, ensure_ascii=False), importanza=0.9
-            )
-            st.session_state.stage = "video_2"
-            st.rerun()
-    st.stop()
-
-# ---------------------------------------------------------
-# STAGE 4: SECONDO VIDEO (intro_2.mp4)
-# ---------------------------------------------------------
-if st.session_state.stage == "video_2":
-    st.title("🎬 L'Arrivo a Venezia")
-    v_ok = riproduci_video_generico("intro_2")
-    if not v_ok:
-        st.info("ℹ️ Video `assets/intro_2.mp4` non trovato. Clicca sotto per entrare!")
-
-    if st.button("🏰 ENTRA A VENEZIA", use_container_width=True):
-        st.session_state.stage = "game"
-        st.rerun()
-    st.stop()
-
-# ---------------------------------------------------------
-# STAGE 5: IL GIOCO VERO E PROPRIO
-# ---------------------------------------------------------
-if "game_state" not in st.session_state:
-    st.session_state.game_state = engine.new_game(config)
-
-s = st.session_state.game_state
-engine.timer(s, config)
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = {}
-
-if "lab_chat_history" not in st.session_state:
-    st.session_state.lab_chat_history = {}
-
-tab_gioca, tab_lab, tab_diagnostica = st.tabs(["🎮 Gioca & Esplora", "🎭 Character's Lab", "🔍 Diagnostica"])
-
-# --- TAB 1: GIOCA & ESPLORA ---
 with tab_gioca:
-    # Determiniamo il personaggio presente nella zona attuale
-    ag_id = config['zones'][s['location']].get('owner', 'rosko')
-    if ag_id == "brago":
-        ag_id = "rosko"
-        
-    ag_nome = config['agents'].get(ag_id, {}).get('name', 'Rosko')
-    
-    st.markdown(f"## 👤 Incontro con {ag_nome} ({config['zones'][s['location']]['name']})")
-    
-    # 🎬 1. VIDEO TALK DEL PERSONAGGIO (PROPRIO IN ALTO SOPRA LA CHAT!)
-    mostra_video_talk(ag_id, ag_nome)
-    
-    st.divider()
 
-    # 💬 2. LA CHAT CON IL PROTAGONISTA
-    st.markdown(f"### 💬 Chat con {ag_nome}")
-    if ag_id not in st.session_state.chat_history:
-        st.session_state.chat_history[ag_id] = []
-
-    container_chat = st.container(height=280)
-    with container_chat:
-        for msg in st.session_state.chat_history[ag_id]:
-            st.chat_message(msg["role"]).write(msg["content"])
+    # =========================================================
+    # LIVELLO 1: MARGINI DELLA LAGUNA 🌊
+    # =========================================================
+    if st.session_state.fase_gioco == "laguna":
+        st.title("🌊 Margini della Laguna — Il Prologo")
+        mostra_video_talk("brago", "Lagoon Pigs")
+        mostra_foto("copertina", "Laguna di Venezia")
+        st.write("💬 **Lagoon Pigs:** *«Oltre la nebbia c'è Venezia... Sei pronto a entrare?»*")
         
-    frase = st.text_input(f"Cosa rispondi a {ag_nome}?:", key=f"chat_{ag_id}")
-    if st.button("💬 Invia Messaggio", key=f"btn_id_{ag_id}"):
-        if frase.strip():
-            st.session_state.chat_history[ag_id].append({"role": "user", "content": frase})
-            risp_ai = genera_risposta_ai(ag_nome, frase)
-            st.session_state.chat_history[ag_id].append({"role": "assistant", "content": risp_ai})
+        if st.button("🚪 ENTRA A VENEZIA", use_container_width=True):
+            st.session_state.fase_gioco = "venezia"
             st.rerun()
 
-    st.divider()
+    # =========================================================
+    # LIVELLO 2: VENEZIA — SCELTA QUARTIERI 🛶
+    # =========================================================
+    elif st.session_state.fase_gioco == "venezia":
+        st.title("🏰 Venezia — Scegli chi Iniziare a Incontrare")
+        mostra_foto("mappa_venezia", "Mappa di Venezia")
+        st.caption("Scegli un quartiere da visitare prima che faccia notte:")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("📍 Cannaregio (Incontra Rosko)", use_container_width=True):
+                st.session_state.agente_scelto = "cannaregio"
+                st.session_state.fase_gioco = "prova"
+                st.rerun()
+            if st.button("📍 San Marco (Incontra Alberic)", use_container_width=True):
+                st.session_state.agente_scelto = "san_marco"
+                st.session_state.fase_gioco = "prova"
+                st.rerun()
+        with c2:
+            if st.button("📍 Rialto (Incontra Klaus)", use_container_width=True):
+                st.session_state.agente_scelto = "rialto"
+                st.session_state.fase_gioco = "prova"
+                st.rerun()
+            if st.button("📍 Castello (Incontra Marla)", use_container_width=True):
+                st.session_state.agente_scelto = "castello"
+                st.session_state.fase_gioco = "prova"
+                st.rerun()
 
-    # 🏰 3. SOTTO LA CHAT: LE FOTO DEL PERSONAGGIO E DEL SUO PALAZZO
-    st.markdown("### 🖼️ Dettagli del Luogo e del Personaggio")
-    col_facia, col_palazzo = st.columns(2)
-    with col_facia:
-        mostra_foto(ag_id, f"Faccia di {ag_nome}")
-    with col_palazzo:
-        mostra_palazzo_personaggio(ag_id, ag_nome)
+    # =========================================================
+    # LIVELLO 3: INCONTRO QUARTIERE E PROVA 🕵️‍♂️
+    # =========================================================
+    elif st.session_state.fase_gioco == "prova":
+        q_info = QUARTIERI[st.session_state.agente_scelto]
+        ag_id = q_info["agente"]
+        ag_nome = q_info["nome_agente"]
+        
+        # Segnamo che abbiamo incontrato questo personaggio!
+        st.session_state.relazioni_personaggi[ag_id]["incontrato_prima"] = True
+        
+        st.title(f"{q_info['nome']} — Incontro con {ag_nome}")
+        mostra_video_talk(ag_id, ag_nome)
+        
+        st.subheader(f"💬 Parlando con {ag_nome}")
+        if ag_id not in st.session_state.chat_history:
+            st.session_state.chat_history[ag_id] = []
 
-    st.divider()
+        box_chat = st.container(height=200)
+        with box_chat:
+            for m in st.session_state.chat_history[ag_id]:
+                st.chat_message(m["role"]).write(m["content"])
+            
+        frase = st.text_input(f"Cosa dici a {ag_nome}?:", key=f"chat_{ag_id}")
+        if st.button("💬 Invia", key=f"btn_{ag_id}"):
+            if frase.strip():
+                st.session_state.chat_history[ag_id].append({"role": "user", "content": frase})
+                risp = genera_risposta_ai(ag_nome, ag_id, frase)
+                st.session_state.chat_history[ag_id].append({"role": "assistant", "content": risp})
+                st.rerun()
 
-    # 🗺️ 4. IN BASSO: LA MAPPA DI VENEZIA CON LE LOCATION DA VISITARE
-    st.markdown("### 🗺️ Mappa di Venezia — Prossime Location da Visitare")
-    mostra_foto("mappa_venezia", "Mappa Generale di Venezia")
-    
-    st.caption("🧭 Scegli quale quartiere esplorare dopo questo incontro:")
-    cols = st.columns(len(config['zones']))
-    for i, z_key in enumerate(config['zones'].keys()):
-        if cols[i].button(f"📍 {config['zones'][z_key]['name']}", key=f"nav_{z_key}", use_container_width=True):
-            s['location'] = z_key
+        st.divider()
+        st.warning(f"📜 **SFIDA DI {ag_nome.upper()}:** {q_info['compito']}")
+        
+        if st.button("✅ SUPERATA LA SFIDA! (Si fa notte... vai al Lizzie Bar)", use_container_width=True):
+            st.session_state.relazioni_personaggi[ag_id]["alleato"] = True
+            st.session_state.fase_gioco = "lizzie_bar"
+            st.rerun()
+
+    # =========================================================
+    # LIVELLO 4: IL LIZZIE BAR DI NOTTE 🌙🍸 (INTERFACCIA EVOLUTA)
+    # =========================================================
+    elif st.session_state.fase_gioco == "lizzie_bar":
+        st.title("🌙 Il Lizzie Bar — Notte")
+        st.caption("È notte. Tutti i personaggi di Venezia si sono spostati qui dentro e parlano tra loro!")
+        mostra_foto("copertina", "Interno del Lizzie Bar")
+        
+        st.subheader("👥 Scegli con chi parlare al bancone del bar:")
+        
+        # Selezione del personaggio al bar
+        personaggio_bar = st.selectbox(
+            "Con chi vuoi interagire al bar?",
+            ["Rosko", "Alberic", "Klaus", "Marla"]
+        )
+        ag_bar_id = personaggio_bar.lower()
+        
+        # MOSTRA L'INTERFACCIA EVOLUTA
+        col_bar_v, col_bar_c = st.columns([1, 1])
+        with col_bar_v:
+            mostra_video_talk(ag_bar_id, personaggio_bar)
+            mostra_foto(ag_bar_id, personaggio_bar)
+            
+            if st.session_state.relazioni_personaggi[ag_bar_id]["incontrato_prima"]:
+                st.success(f"🟢 {personaggio_bar} si ricorda di te da Venezia!")
+            else:
+                st.info(f"🔵 {personaggio_bar} ti vede per la prima volta stasera.")
+                
+        with col_bar_c:
+            st.markdown(f"### 💬 Chat al Bar con {personaggio_bar}")
+            key_chat_bar = f"bar_chat_{ag_bar_id}"
+            if key_chat_bar not in st.session_state.chat_history:
+                st.session_state.chat_history[key_chat_bar] = []
+                
+            box_bar = st.container(height=200)
+            with box_bar:
+                for m in st.session_state.chat_history[key_chat_bar]:
+                    st.chat_message(m["role"]).write(m["content"])
+                    
+            f_bar = st.text_input(f"Cosa dici a {personaggio_bar} al bar?:", key=f"in_bar_{ag_bar_id}")
+            if st.button("💬 Parla al Bar", key=f"btn_bar_{ag_bar_id}"):
+                if f_bar.strip():
+                    st.session_state.chat_history[key_chat_bar].append({"role": "user", "content": f_bar})
+                    risp_b = genera_risposta_ai(personaggio_bar, ag_bar_id, f_bar)
+                    st.session_state.chat_history[key_chat_bar].append({"role": "assistant", "content": risp_b})
+                    st.rerun()
+
+        st.divider()
+        st.subheader("🚪 Il Backstage di Lizzie")
+        
+        if st.button("🚪 PROVA AD ENTRARE NEL BACKSTAGE DA LIZZIE", use_container_width=True):
+            # Calcoliamo quanti alleati abbiamo!
+            alleati_totali = sum(1 for p in st.session_state.relazioni_personaggi.values() if p["alleato"])
+            
+            if alleati_totali >= 1: # Può essere personalizzato
+                st.session_state.fase_gioco = "backstage"
+                st.rerun()
+            else:
+                st.error("🚫 I gorilla ti sbarrano la strada: 'Nessuno dei clienti abituali garantisce per te. Non puoi passare!'")
+
+    # =========================================================
+    # LIVELLO 5: IL BACKSTAGE DI LIZZIE 👑📦
+    # =========================================================
+    elif st.session_state.fase_gioco == "backstage":
+        st.title("👑 Il Backstage di Lizzie")
+        mostra_video_talk("lizzie", "Lizzie")
+        mostra_foto("lizzie", "Lizzie")
+        st.balloons()
+        st.success("🏆 COMPLIMENTI! I tuoi alleati al bar ti hanno fatto passare! Hai consegnato il pacco a Lizzie!")
+        
+        if st.button("🔄 RICOMINCIA UNA NUOVA STORIA", use_container_width=True):
+            st.session_state.fase_gioco = "laguna"
+            st.session_state.relazioni_personaggi = {k: {"incontrato_prima": False, "alleato": False} for k in st.session_state.relazioni_personaggi}
             st.rerun()
 
 # --- TAB 2: CHARACTER'S LAB ---
 with tab_lab:
-    st.header("🎭 Character's Lab — Laboratorio degli Agenti")
-    st.subheader("🔑 Configurazione & Test della Chiave API Gemini")
-    
-    chiave_input = st.text_input(
-        "Incolla la tua Chiave API Gemini (inizia con AIzaSy...):",
-        value=st.session_state.get("gemini_key_manuale", ""),
-        type="password"
-    )
-    
-    col_btn_test, col_spia = st.columns([1, 2])
-    
-    with col_btn_test:
-        if st.button("⚡ TESTA E SALVA CHIAVE API", use_container_width=True):
-            chiave_p = chiave_input.strip()
-            if not chiave_p:
-                st.warning("🟡 La casella è vuota! Incolla prima una chiave.")
-                st.session_state.chiave_verificata_ok = False
-            else:
-                with st.spinner("🕵️‍♂️️ Prova di connessione in corso..."):
-                    try:
-                        client_test = genai.Client(api_key=chiave_p)
-                        test_resp = client_test.models.generate_content(
-                            model="gemini-2.5-flash",
-                            contents="Rispondi 'OK'"
-                        )
-                        if test_resp and hasattr(test_resp, 'text'):
-                            st.session_state.gemini_key_manuale = chiave_p
-                            st.session_state.chiave_verificata_ok = True
-                            st.success("🟢 VITTORIA! La chiave è valida e funzionante!")
-                            st.balloons()
-                    except Exception as err_k:
-                        st.session_state.chiave_verificata_ok = False
-                        st.error("🔴 OH NO! La chiave API inserita non funziona!")
-                        st.caption(f"Dettaglio errore: {err_k}")
-
-    with col_spia:
-        if st.session_state.chiave_verificata_ok or ottieni_api_key().startswith("AIzaSy"):
-            st.success("🟢 Spia Verde: La chiave API è attiva e i personaggi possono parlare!")
-        else:
-            st.warning("🟡 Spia Gialla: Incolla la chiave e premi 'TESTA E SALVA' per attivare l'IA.")
-
-    st.divider()
-    st.subheader("👥 Scegli un Agente da Testare o Modificare")
-    
-    lista_agenti = [a for a in config['agents'].keys() if a != "brago"]
-    sel_agent_id = st.selectbox("Seleziona personaggio:", lista_agenti, format_func=lambda x: config['agents'][x]['name'])
-    
-    if sel_agent_id:
-        p_dati = config['agents'][sel_agent_id]
-        p_nome = p_dati['name']
-        
-        col_lab_left, col_lab_right = st.columns([1, 1])
-        
-        with col_lab_left:
-            st.markdown(f"### 🖼️ Scheda di {p_nome}")
-            mostra_video_talk(sel_agent_id, p_nome)
-            mostra_foto(sel_agent_id, f"Faccia di {p_nome}")
-            mostra_palazzo_personaggio(sel_agent_id, p_nome)
-            
-            st.write(f"**Location Base:** {p_dati.get('location', 'Sconosciuta')}")
-            st.write(f"**Biografia:** {p_dati.get('biography', 'Nessuna biografia.')}")
-            
-        with col_lab_right:
-            st.markdown(f"### 💬 Prova di Dialogo Diretto con {p_nome}")
-            
-            if sel_agent_id not in st.session_state.lab_chat_history:
-                st.session_state.lab_chat_history[sel_agent_id] = []
-                
-            box_lab_chat = st.container(height=250)
-            with box_lab_chat:
-                for m in st.session_state.lab_chat_history[sel_agent_id]:
-                    st.chat_message(m["role"]).write(m["content"])
-                    
-            msg_lab = st.text_input(f"Fai una domanda di prova a {p_nome}:", key=f"lab_input_{sel_agent_id}")
-            if st.button("⚡ Test Risposta AI", key=f"lab_btn_{sel_agent_id}"):
-                if msg_lab.strip():
-                    st.session_state.lab_chat_history[sel_agent_id].append({"role": "user", "content": msg_lab})
-                    risp_test = genera_risposta_ai(p_nome, msg_lab)
-                    st.session_state.lab_chat_history[sel_agent_id].append({"role": "assistant", "content": risp_test})
-                    st.rerun()
-
-# --- TAB 3: DIAGNOSTICA ---
-with tab_diagnostica:
-    st.header("🔍 Diagnostica di Sistema")
-    st.write("📌 **Passaggio attuale:**", st.session_state.stage)
-    st.write("👤 **I tuoi Ricordi registrati:**", st.session_state.player_profile)
-    st.write("🚌 **Eventi registrati:**", st.session_state.event_bus.eventi)
+    st.header("🎭 Character's Lab")
+    st.text_input("🔑 Incolla qui la tua Chiave API Gemini:", key="gemini_key_manuale", type="password")
