@@ -3,7 +3,7 @@ import os
 import time
 import streamlit as st
 import engine
-from google import genai
+from openai import OpenAI  # 🤖 Ora usiamo ChatGPT!
 
 from story_factory import EventBus, StoryFactory
 
@@ -30,7 +30,7 @@ def mostra_foto(nome, didascalia=""):
     if percorso:
         st.image(percorso, caption=didascalia, use_container_width=True)
     else:
-        st.info(f"🖼️ [Manca l'immagine {nome}.png dentro la cartella assets/]")
+        st.info(f"🖼️️ [Manca l'immagine {nome}.png dentro la cartella assets/]")
 
 def mostra_foto_lizziebar(id_personaggio, didascalia=""):
     nomi_da_provare = [
@@ -155,21 +155,23 @@ def carica_mondo():
 
 config = carica_mondo()
 
-# RECUPERO CHIAVE API
+# RECUPERO CHIAVE API OPENAI
 def ottieni_api_key():
-    chiave_m = st.session_state.get("gemini_key_manuale", "").strip()
+    chiave_m = st.session_state.get("openai_key_manuale", "").strip()
     if chiave_m:
         return chiave_m
     try:
-        return st.secrets.get("GEMINI_API_KEY", "").strip()
+        return st.secrets.get("OPENAI_API_KEY", "").strip()
     except Exception:
         return ""
 
-# GENERATORE RISPOSTE AI CON LIBRERIA GOOGLE-GENAI UNIFICATA 🔑
+# ---------------------------------------------------------
+# 🤖 GENERATORE RISPOSTE CON CHATGPT (OPENAI)
+# ---------------------------------------------------------
 def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
     api_k = ottieni_api_key()
     if not api_k:
-        return f"«{ag_nome} ti fissa in silenzio... (Incolla e testa la chiave API nel Character's Lab!)»"
+        return f"«{ag_nome} ti fissa in silenzio... (Incolla la chiave API di OpenAI nel Character's Lab!)»"
     
     api_k = api_k.strip()
     
@@ -184,32 +186,34 @@ def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
         else:
             contest_memoria = f"Non vi siete mai incontrati di persona prima, ma hai sentito parlare di lui/lei dagli altri clienti del bar."
             
-        prompt = (
-            f"Tu sei {ag_nome} all'interno del Lizzie Bar di notte.\n"
+        prompt_sistema = (
+            f"Tu sei {ag_nome} all'interno del rumoroso e cupo Lizzie Bar di notte.\n"
             f"Memoria del personaggio: {contest_memoria}\n"
-            f"Rispondi in modo informale, misterioso e adatto a un locale notturno in max 2 frasi in italiano.\n"
-            f"Il giocatore ti dice: '{frase_giocatore}'"
+            f"Rispondi sempre in italiano, con un tono informale, misterioso e adatto a un locale notturno. Massimo 2 frasi."
         )
     else:
-        prompt = (
-            f"Tu sei {ag_nome} nel suo quartiere a Venezia.\n"
+        prompt_sistema = (
+            f"Tu sei {ag_nome} nel tuo quartiere a Venezia nel videogioco Venezia Luna Park.\n"
             f"I ricordi raccontati dal giocatore sono: {info_ricordi}.\n"
-            f"Rispondi in modo misterioso in 2 frasi in italiano a: '{frase_giocatore}'"
+            f"Rispondi sempre in italiano in modo misterioso ed enigmatico. Massimo 2 frasi."
         )
 
     try:
-        client = genai.Client(api_key=api_k)
-        modelli_da_provare = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
-        for mod in modelli_da_provare:
-            try:
-                resp = client.models.generate_content(model=mod, contents=prompt)
-                if resp and hasattr(resp, 'text') and resp.text:
-                    return resp.text.strip()
-            except Exception:
-                continue
-        return "⚠️ I modelli Gemini non rispondono. Verifica la tua chiave API su Google AI Studio."
+        client = OpenAI(api_key=api_k)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": prompt_sistema},
+                {"role": "user", "content": frase_giocatore}
+            ],
+            max_tokens=150,
+            temperature=0.7
+        )
+        if response.choices and len(response.choices) > 0:
+            return response.choices[0].message.content.strip()
+        return "⚠️ Nessuna risposta ricevuta da ChatGPT."
     except Exception as e:
-        return f"⚠️ Errore AI: {e}"
+        return f"⚠️ Errore OpenAI: {e}"
 
 QUARTIERI = {
     "cannaregio": {"nome": "📍 Cannaregio", "agente": "rosko", "nome_agente": "Rosko", "compito": "Decifra il messaggio nei canali di Cannaregio!"},
@@ -538,34 +542,35 @@ with tab_gioca:
 # --- TAB 2: CHARACTER'S LAB ---
 with tab_lab:
     st.header("🎭 Character's Lab — Laboratorio degli Agenti")
-    st.subheader("🔑 Configurazione & Test della Chiave API Gemini")
+    st.subheader("🔑 Configurazione & Test della Chiave API OpenAI (ChatGPT)")
     
     chiave_input = st.text_input(
-        "Incolla la tua Chiave API Gemini (inizia con AIzaSy...):",
-        value=st.session_state.get("gemini_key_manuale", ""),
+        "Incolla la tua Chiave API OpenAI (inizia con sk-proj-...):",
+        value=st.session_state.get("openai_key_manuale", ""),
         type="password"
     )
     
     col_btn_test, col_spia = st.columns([1, 2])
     
     with col_btn_test:
-        if st.button("⚡ TESTA E SALVA CHIAVE API", use_container_width=True):
+        if st.button("⚡ TESTA E SALVA CHIAVE API OPENAI", use_container_width=True):
             chiave_p = chiave_input.strip()
             if not chiave_p:
                 st.warning("🟡 La casella è vuota! Incolla prima una chiave.")
                 st.session_state.chiave_verificata_ok = False
             else:
-                with st.spinner("🕵️‍♂️ Prova di connessione in corso..."):
+                with st.spinner("🕵️‍♂️ Prova di connessione a OpenAI in corso..."):
                     try:
-                        client_test = genai.Client(api_key=chiave_p)
-                        test_resp = client_test.models.generate_content(
-                            model="gemini-2.5-flash",
-                            contents="Rispondi 'OK'"
+                        client_test = OpenAI(api_key=chiave_p)
+                        test_resp = client_test.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[{"role": "user", "content": "Rispondi 'OK'"}],
+                            max_tokens=10
                         )
-                        if test_resp and hasattr(test_resp, 'text'):
-                            st.session_state.gemini_key_manuale = chiave_p
+                        if test_resp and test_resp.choices:
+                            st.session_state.openai_key_manuale = chiave_p
                             st.session_state.chiave_verificata_ok = True
-                            st.success("🟢 VITTORIA! La chiave è valida e funzionante!")
+                            st.success("🟢 VITTORIA! La chiave OpenAI (ChatGPT) è valida e funzionante!")
                             st.balloons()
                     except Exception as err_k:
                         st.session_state.chiave_verificata_ok = False
@@ -573,10 +578,10 @@ with tab_lab:
                         st.caption(f"Dettaglio errore: {err_k}")
 
     with col_spia:
-        if st.session_state.chiave_verificata_ok or ottieni_api_key().startswith("AIzaSy"):
-            st.success("🟢 Spia Verde: La chiave API è attiva e i personaggi possono parlare!")
+        if st.session_state.chiave_verificata_ok or ottieni_api_key().startswith("sk-"):
+            st.success("🟢 Spia Verde: La chiave OpenAI è attiva e ChatGPT farà parlare i personaggi!")
         else:
-            st.warning("🟡 Spia Gialla: Incolla la chiave e premi 'TESTA E SALVA' per attivare l'IA.")
+            st.warning("🟡 Spia Gialla: Incolla la chiave OpenAI (inizia con sk-...) e premi 'TESTA E SALVA'.")
 
 # --- TAB 3: DIAGNOSTICA ---
 with tab_diagnostica:
