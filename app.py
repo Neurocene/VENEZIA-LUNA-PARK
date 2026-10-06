@@ -128,7 +128,6 @@ if "player_profile" not in st.session_state:
 if "agente_scelto" not in st.session_state:
     st.session_state.agente_scelto = None
 
-# Tracciamo TUTTI i personaggi (compresa ELOISE!)
 if "relazioni_personaggi" not in st.session_state:
     st.session_state.relazioni_personaggi = {
         "rosko": {"incontrato_prima": False, "alleato": False},
@@ -156,6 +155,7 @@ def carica_mondo():
 
 config = carica_mondo()
 
+# RECUPERO CHIAVE API
 def ottieni_api_key():
     chiave_m = st.session_state.get("gemini_key_manuale", "").strip()
     if chiave_m:
@@ -165,10 +165,13 @@ def ottieni_api_key():
     except Exception:
         return ""
 
+# GENERATORE RISPOSTE AI CON LIBRERIA GOOGLE-GENAI UNIFICATA 🔑
 def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
     api_k = ottieni_api_key()
     if not api_k:
-        return f"«{ag_nome} ti fissa in silenzio... (Incolla la chiave API nel Character's Lab per farlo parlare!)»"
+        return f"«{ag_nome} ti fissa in silenzio... (Incolla e testa la chiave API nel Character's Lab!)»"
+    
+    api_k = api_k.strip()
     
     info_relazione = st.session_state.relazioni_personaggi.get(ag_id, {})
     incontrato = info_relazione.get("incontrato_prima", False)
@@ -196,15 +199,15 @@ def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
 
     try:
         client = genai.Client(api_key=api_k)
-        modelli = ['gemini-2.5-flash', 'gemini-1.5-flash']
-        for mod in modelli:
+        modelli_da_provare = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+        for mod in modelli_da_provare:
             try:
                 resp = client.models.generate_content(model=mod, contents=prompt)
-                if resp and resp.text:
+                if resp and hasattr(resp, 'text') and resp.text:
                     return resp.text.strip()
             except Exception:
                 continue
-        return "⚠️ Errore di connessione con l'AI."
+        return "⚠️ I modelli Gemini non rispondono. Verifica la tua chiave API su Google AI Studio."
     except Exception as e:
         return f"⚠️ Errore AI: {e}"
 
@@ -427,7 +430,7 @@ with tab_gioca:
                 st.rerun()
 
     # ---------------------------------------------------------
-    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸 (ORA CON ELOISE!)
+    # FASE C: IL LIZZIE BAR DI NOTTE 🌙🍸
     # ---------------------------------------------------------
     elif st.session_state.fase_venezia == "lizzie_bar":
         st.title("🌙 Il Lizzie Bar — Notte")
@@ -439,7 +442,6 @@ with tab_gioca:
         st.divider()
 
         st.subheader("👥 Scegli con chi parlare al bancone del bar:")
-        # 🟣 ECCO ELOISE AGGIUNTA NELLA LISTA DEI CLIENTE DEL BAR!
         personaggio_bar = st.selectbox("Seleziona cliente al bar:", ["Rosko", "Alberic", "Klaus", "Marla", "Eloise"])
         ag_bar_id = personaggio_bar.lower()
         
@@ -478,7 +480,7 @@ with tab_gioca:
         prove_superate_totali = sum(1 for p in st.session_state.relazioni_personaggi.values() if p["alleato"])
         totale_prove_richieste = len(st.session_state.relazioni_personaggi)
         
-        if prove_superate_totali >= 4: # Richiede almeno 4 alleanze per passare!
+        if prove_superate_totali >= 4:
             st.success("🟢 Hai superato le prove degli agenti! I gorilla ti lasciano passare nel backstage!")
             if st.button("🚪 ENTRA NEL BACKSTAGE DA LIZZIE", use_container_width=True):
                 st.session_state.fase_venezia = "backstage"
