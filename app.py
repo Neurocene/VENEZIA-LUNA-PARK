@@ -588,7 +588,7 @@ existing = st.session_state.get("narrative")
 if not isinstance(existing, dict) or existing.get("version") != 42 or not required_fields.issubset(existing):
     fresh = nf.new()
     if fresh.get("version") != 42 or not required_fields.issubset(fresh):
-        st.error("Aggiornamento incompleto: carica anche narrative_flow.py della versione 0.4.3 nella stessa cartella di app.py, poi riavvia l'app.")
+        st.error("Aggiornamento incompleto: carica anche narrative_flow.py della versione 0.4.4 nella stessa cartella di app.py, poi riavvia l'app.")
         st.stop()
     st.session_state.narrative = fresh
     if existing is not None:
@@ -751,7 +751,7 @@ def dialogo_gioco(aid, key):
                     st.session_state.last_presentation = reply
         st.rerun()
 
-st.caption("Venezia Luna Park 0.4.3 â€¢ 20 minuti reali = 24 ore simulate")
+st.caption("Venezia Luna Park 0.4.4 â€¢ 20 minuti reali = 24 ore simulate")
 tab_gioca, tab_lab, tab_diagnostica = st.tabs(["Gioca", "Character's Lab", "Diagnostica"])
 with tab_gioca:
     if n["paused"]:
@@ -763,6 +763,7 @@ with tab_gioca:
             st.session_state.palazzo_page = None
         if selected is None:
             st.title("Venezia â€” incontri nei palazzi")
+            mostra_foto("mappa_venezia", "Venezia")
             columns = st.columns(3)
             for index, aid in enumerate(nf.FOUNDERS):
                 nome = st.session_state.agent_profiles[aid]["name"]
@@ -885,7 +886,7 @@ with tab_gioca:
 with tab_lab:
     st.header("ðŸŽ­ Character's Lab â€” Laboratorio degli agenti")
 
-    st.caption("Versione 0.4.3: biografie, voci e memoria. Il nuovo percorso Ã¨ gestito da narrative_flow.py.")
+    st.caption("Versione 0.4.4: biografie, voci e memoria. Il nuovo percorso Ã¨ gestito da narrative_flow.py.")
     st.caption("Il laboratorio non conta come incontro di gioco. Metti in pausa il timer per modificare le schede.")
 
     st.divider()
