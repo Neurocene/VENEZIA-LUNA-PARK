@@ -3,6 +3,11 @@ import os
 import time
 import streamlit as st
 import engine
+from pathlib import Path
+import agent_runtime as ar
+
+ROOT = Path(__file__).resolve().parent
+os.chdir(ROOT)
 from openai import OpenAI  # 🤖 Ora usiamo ChatGPT!
 
 from story_factory import EventBus, StoryFactory
@@ -168,52 +173,43 @@ def ottieni_api_key():
 # ---------------------------------------------------------
 # 🤖 GENERATORE RISPOSTE CON CHATGPT (OPENAI)
 # ---------------------------------------------------------
-def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
-    api_k = ottieni_api_key()
-    if not api_k:
-        return f"«{ag_nome} ti fissa in silenzio... (Incolla la chiave API di OpenAI nel Character's Lab!)»"
-    
-    api_k = api_k.strip()
-    
-    info_relazione = st.session_state.relazioni_personaggi.get(ag_id, {})
-    incontrato = info_relazione.get("incontrato_prima", False)
-    fase = st.session_state.fase_venezia
-    info_ricordi = json.dumps(st.session_state.player_profile, ensure_ascii=False)
+if "agent_state" not in st.session_state:
+    st.session_state.agent_state = ar.new_state()
+if "agent_profiles" not in st.session_state:
+    st.session_state.agent_profiles = ar.profiles(ROOT)
 
-    if fase == "lizzie_bar":
-        if incontrato:
-            contest_memoria = f"Vi siete già incontrati di giorno a Venezia. Ti ricordi di lui/lei e dei ricordi raccontati ({info_ricordi})."
-        else:
-            contest_memoria = f"Non vi siete mai incontrati di persona prima, ma hai sentito parlare di lui/lei dagli altri clienti del bar."
-            
-        prompt_sistema = (
-            f"Tu sei {ag_nome} all'interno del rumoroso e cupo Lizzie Bar di notte.\n"
-            f"Memoria del personaggio: {contest_memoria}\n"
-            f"Rispondi sempre in italiano, con un tono informale, misterioso e adatto a un locale notturno. Massimo 2 frasi."
-        )
-    else:
-        prompt_sistema = (
-            f"Tu sei {ag_nome} nel tuo quartiere a Venezia nel videogioco Venezia Luna Park.\n"
-            f"I ricordi raccontati dal giocatore sono: {info_ricordi}.\n"
-            f"Rispondi sempre in italiano in modo misterioso ed enigmatico. Massimo 2 frasi."
-        )
+def situazione_agenti():
+    return {"fase": st.session_state.fase_venezia, "turno_sociale": st.session_state.agent_state["turn"],
+            "contesto": "Gli incontri di quartiere e del bar sono gestiti dall'interfaccia. I turni sociali non sono ore narrative."}
 
+def iniziative_agenti(escluso=None):
+    if not st.session_state.get("autonomia_sociale", False) or not ottieni_api_key():
+        return
+    ids = list(st.session_state.agent_profiles)
+    turn = st.session_state.agent_state["turn"]
+    aid = ids[turn % len(ids)]
+    if aid == escluso:
+        aid = ids[(turn + 1) % len(ids)]
     try:
-        client = OpenAI(api_key=api_k)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": prompt_sistema},
-                {"role": "user", "content": frase_giocatore}
-            ],
-            max_tokens=150,
-            temperature=0.7
-        )
-        if response.choices and len(response.choices) > 0:
-            return response.choices[0].message.content.strip()
-        return "⚠️ Nessuna risposta ricevuta da ChatGPT."
-    except Exception as e:
-        return f"⚠️ Errore OpenAI: {e}"
+        ar.step(st.session_state.agent_state, st.session_state.agent_profiles, aid,
+                situazione_agenti(), OpenAI(api_key=ottieni_api_key()),
+                st.session_state.get("modello_agenti", "gpt-4o-mini"))
+    except Exception:
+        st.session_state.agent_error = "Iniziativa non eseguita: servizio non disponibile o decisione non valida."
+
+def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
+    if not ottieni_api_key():
+        return "Connessione AI non configurata. Nessuna memoria o azione aggiornata."
+    try:
+        reply = ar.talk(st.session_state.agent_state, st.session_state.agent_profiles,
+                        ag_id, frase_giocatore, situazione_agenti(),
+                        OpenAI(api_key=ottieni_api_key()),
+                        st.session_state.get("modello_agenti", "gpt-4o-mini"))
+        iniziative_agenti(escluso=ag_id)
+        return reply
+    except Exception:
+        return "Il servizio AI non ha risposto. Riprova: la memoria del personaggio non è stata aggiornata."
+
 
 QUARTIERI = {
     "cannaregio": {"nome": "📍 Cannaregio", "agente": "rosko", "nome_agente": "Rosko", "compito": "Decifra il messaggio nei canali di Cannaregio!"},
@@ -222,6 +218,12 @@ QUARTIERI = {
     "castello": {"nome": "📍 Castello", "agente": "marla", "nome_agente": "Marla", "compito": "Risolvi l'enigma dell'Arsenale di Castello!"},
     "dorsoduro": {"nome": "📍 Dorsoduro", "agente": "eloise", "nome_agente": "Eloise", "compito": "Svela il segreto della galleria d'arte a Dorsoduro!"}
 }
+
+def segreto(nome, default=""):
+    try:
+        return st.secrets.get(nome, default)
+    except Exception:
+        return default
 
 # =========================================================
 # STAGE 1: INGRESSO CON PASSWORD 🔒
@@ -232,7 +234,7 @@ if st.session_state.stage == "login":
     
     pwd = st.text_input("🔒 Codice di Accesso:", type="password")
     if st.button("🚪 ENTRA NEL MONDO", use_container_width=True) or pwd == "venezia2026":
-        if pwd == "venezia2026" or pwd == st.secrets.get("APP_ACCESS_CODE", "venezia2026"):
+        if pwd == "venezia2026" or pwd == segreto("APP_ACCESS_CODE", "venezia2026"):
             st.session_state.stage = "video_1"
             st.rerun()
         elif pwd != "":
@@ -322,6 +324,8 @@ if "game_state" not in st.session_state:
 s = st.session_state.game_state
 engine.timer(s, config)
 
+st.caption("Prototipo 0.2 — dialoghi con biografie e memoria; iniziative sociali nel Lab. Le prove si completano ancora manualmente.")
+
 tab_gioca, tab_lab, tab_diagnostica = st.tabs(["🎮 Gioca & Esplora", "🎭 Character's Lab", "🔍 Diagnostica"])
 
 # --- TAB 1: GIOCO PRINCIPALE ---
@@ -385,6 +389,9 @@ with tab_gioca:
             
             if st.button("✅ HO COMPLETATO QUESTA MISSIONE! (Avanza la storia)", use_container_width=True):
                 st.session_state.relazioni_personaggi[ag_id]["alleato"] = True
+                ar.remember(st.session_state.agent_state, ag_id,
+                            "Il giocatore ha dichiarato completata la prova tramite il pulsante del prototipo.",
+                            "protagonista", "completamento_manuale_non_verificato")
                 st.session_state.fase_venezia = "lizzie_bar"
                 st.session_state.in_sfida = False
                 st.rerun()
@@ -479,6 +486,10 @@ with tab_gioca:
                     st.rerun()
 
         st.divider()
+        if st.button("🗺️ TORNA AI QUARTIERI PER LE ALTRE PROVE"):
+            st.session_state.fase_venezia = "esplorazione"
+            st.session_state.in_sfida = False
+            st.rerun()
         st.subheader("🚪 Il Backstage di Lizzie")
         
         prove_superate_totali = sum(1 for p in st.session_state.relazioni_personaggi.values() if p["alleato"])
@@ -490,7 +501,7 @@ with tab_gioca:
                 st.session_state.fase_venezia = "backstage"
                 st.rerun()
         else:
-            st.warning(f"🔒 Prove superate: {prove_superate_totali}/{totale_prove_richieste}. Devi completare più prove prima di entrare da Lizzie!")
+            st.warning(f"🔒 Prove superate: {prove_superate_totali}/4 richieste (5 disponibili). Devi completare più prove prima di entrare da Lizzie!")
             
             if st.button("🔓 [TRUCCO MAGICO] UNBLOCK: SBLOCCA LIZZIE SUBITO!", use_container_width=True):
                 for p_key in st.session_state.relazioni_personaggi:
@@ -537,11 +548,91 @@ with tab_gioca:
             st.session_state.stage = "login"
             st.session_state.fase_venezia = "esplorazione"
             st.session_state.relazioni_personaggi = {k: {"incontrato_prima": False, "alleato": False} for k in st.session_state.relazioni_personaggi}
+            st.session_state.agent_state = ar.new_state()
+            st.session_state.chat_history = {}
+            st.session_state.player_profile = {}
+            st.session_state.game_state = engine.new_game(config)
+            st.session_state.event_bus = EventBus()
+            st.session_state.story_factory = StoryFactory(st.session_state.event_bus)
+            st.session_state.agente_scelto = None
+            st.session_state.in_sfida = False
             st.rerun()
 
 # --- TAB 2: CHARACTER'S LAB ---
 with tab_lab:
     st.header("🎭 Character's Lab — Laboratorio degli Agenti")
+    st.caption("Versione 0.2: voci, memoria e iniziative sociali. Spostamenti, inseguimento e prove sono ancora quelli del prototipo e non sono decisi dagli agenti.")
+    st.text_input("Modello API", value="gpt-4o-mini", key="modello_agenti")
+    st.checkbox("Un altro agente prende un'iniziativa dopo ogni dialogo (una chiamata API aggiuntiva)", key="autonomia_sociale")
+    lab_id = st.selectbox("Personaggio da osservare o riscrivere", list(st.session_state.agent_profiles))
+    prof = st.session_state.agent_profiles[lab_id]
+    with st.form("edit_profile_" + lab_id):
+        bio = st.text_area("Biografia privata", value=prof["biography"], height=250)
+        voice = st.text_area("Voce e stile", value=prof["voice"])
+        if st.form_submit_button("Applica scheda alla sessione"):
+            prof.update(biography=bio, voice=voice)
+            st.success("Scheda aggiornata per i prossimi dialoghi. Scaricala per conservarla.")
+    st.download_button("Scarica biografia modificata", prof["biography"], file_name=ar.FILES[lab_id])
+    lab_text = st.text_input("Dialogo di prova", key="lab_dialogue")
+    if st.button("Parla con il personaggio nel laboratorio") and lab_text.strip():
+        st.write(genera_risposta_ai(prof["name"], lab_id, lab_text))
+    if st.button("Fai scegliere un'iniziativa a questo agente"):
+        if not ottieni_api_key():
+            st.warning("Configura la connessione API.")
+        else:
+            try:
+                st.session_state.agent_state["turn"] += 1
+                decision = ar.step(st.session_state.agent_state, st.session_state.agent_profiles,
+                                   lab_id, situazione_agenti(), OpenAI(api_key=ottieni_api_key()),
+                                   st.session_state.modello_agenti)
+                st.json(decision)
+            except Exception:
+                st.warning("Decisione non eseguita: risposta non valida o servizio non disponibile.")
+    with st.expander("Memoria e conversazioni private del personaggio"):
+        st.json(st.session_state.agent_state["agents"][lab_id])
+    with st.expander("Iniziative sociali — vista autore, non informazioni del protagonista"):
+        st.json(st.session_state.agent_state["events"][-40:])
+    if st.session_state.get("agent_error"):
+        st.warning(st.session_state.pop("agent_error"))
+    snapshot = {"format":"venezia-sociale-1", "agents":st.session_state.agent_state,
+                "profiles":st.session_state.agent_profiles,
+                "phase":st.session_state.fase_venezia,
+                "relations":st.session_state.relazioni_personaggi,
+                "chat_history":st.session_state.chat_history,
+                "player_profile":st.session_state.player_profile,
+                "selected":st.session_state.agente_scelto, "in_sfida":st.session_state.in_sfida}
+    st.download_button("Salva sessione sociale e percorso", json.dumps(snapshot, ensure_ascii=False, indent=2),
+                       file_name="venezia_sessione.json", mime="application/json")
+    st.caption("Il salvataggio contiene conversazioni e segreti narrativi. Non include la chiave API. Non salva il vecchio motore delle gondole.")
+    restore = st.file_uploader("Riprendi una sessione esportata", type=["json"])
+    if st.button("Ripristina sessione") and restore:
+        try:
+            snap = json.loads(restore.getvalue())
+            assert snap["format"] == "venezia-sociale-1"
+            assert set(snap["agents"]["agents"]) == set(ar.FILES)
+            assert set(snap["profiles"]) == set(ar.FILES)
+            assert snap["phase"] in ("esplorazione","prova","lizzie_bar","backstage")
+            assert snap["selected"] is None or snap["selected"] in QUARTIERI
+            assert snap["phase"] != "prova" or snap["selected"] in QUARTIERI
+            assert set(snap["relations"]) == {"rosko","alberic","klaus","marla","eloise"}
+            for aid in ar.FILES:
+                a=snap["agents"]["agents"][aid]
+                assert isinstance(a["memory"],list) and isinstance(a["history"],list)
+                assert isinstance(a["plan"],str) and isinstance(snap["profiles"][aid]["biography"],str)
+            assert isinstance(snap["agents"]["turn"],int) and isinstance(snap["agents"]["events"],list)
+            st.session_state.agent_state=snap["agents"]
+            st.session_state.agent_profiles=snap["profiles"]
+            st.session_state.fase_venezia=snap["phase"]
+            st.session_state.relazioni_personaggi=snap["relations"]
+            st.session_state.chat_history=snap["chat_history"]
+            st.session_state.player_profile=snap["player_profile"]
+            st.session_state.agente_scelto=snap["selected"]
+            st.session_state.in_sfida=snap["in_sfida"]
+            st.rerun()
+        except (ValueError, KeyError, AssertionError, TypeError):
+            st.error("Salvataggio non compatibile o incompleto.")
+    st.divider()
+
     st.subheader("🔑 Configurazione & Test della Chiave API OpenAI (ChatGPT)")
     
     chiave_input = st.text_input(
