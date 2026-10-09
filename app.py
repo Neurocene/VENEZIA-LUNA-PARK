@@ -417,7 +417,7 @@ def nuova_avventura():
 # =========================================================
 
 if st.session_state.stage == "login":
-    st.title("ðŸŽ­ Venezia Luna Park â€” Accesso")
+    st.title("VENEZIA LUNA PARK")
     mostra_foto("copertina", "Benvenuto a Venezia Luna Park")
 
     pwd = st.text_input(
