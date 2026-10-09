@@ -7,7 +7,8 @@ from openai import OpenAI
 
 import engine
 import agent_runtime as ar
-import klaus_gate as kg
+import narrative_flow as nf
+import copy
 from story_factory import EventBus, StoryFactory
 
 
@@ -309,17 +310,6 @@ def genera_risposta_ai(ag_nome, ag_id, frase_giocatore):
         )
 
 
-# Klaus usa il valutatore narrativo del modulo klaus_gate.py.
-# Gli altri personaggi continuano a usare agent_runtime.py.
-genera_risposta_ai = kg.connect(
-    st,
-    genera_risposta_ai,
-    ottieni_api_key,
-    ar,
-    situazione_agenti,
-)
-
-
 # =========================================================
 # QUARTIERI
 # =========================================================
@@ -394,6 +384,7 @@ def invia_dialogo(chiave, nome, aid, testo):
 
 
 def nuova_avventura():
+    st.session_state.pop("narrative", None)
     st.session_state.stage = "login"
     st.session_state.fase_venezia = "esplorazione"
     st.session_state.relazioni_personaggi = nuove_relazioni()
@@ -584,355 +575,159 @@ if st.session_state.stage == "video_2":
 if "game_state" not in st.session_state:
     st.session_state.game_state = engine.new_game(config)
 
-s = st.session_state.game_state
-engine.timer(s, config)
+# Versione 4: percorso indipendente dal vecchio gate esclusivo di Klaus.
+if "narrative" not in st.session_state:
+    st.session_state.narrative = nf.new()
+n = st.session_state.narrative
+nf.update_clock(n)
+st.session_state.fase_venezia = n["phase"]
 
-# Impedisce l'accesso al bar senza la presentazione di Klaus
-# e mostra il pulsante di accesso quando è stata concessa.
-kg.controls(st)
+@st.fragment(run_every=1)
+def countdown():
+    previous = n["phase"]
+    nf.update_clock(n)
+    seconds = max(0, int(nf.DURATION-n["elapsed"]))
+    hours = n["elapsed"] / nf.DURATION * 24
+    st.metric("Tempo disponibile", f"{seconds//60:02d}:{seconds%60:02d}")
+    st.caption(f"{hours:.1f} / 24 ore simulate • {'PAUSA' if n['paused'] else 'in corso'}")
+    st.progress(min(1.0, n["elapsed"]/nf.DURATION))
+    if previous != n["phase"]:
+        st.rerun()
 
-st.caption(
-    "Prototipo 0.3 — dialoghi, biografie e memoria; "
-    "accesso al Lizzie Bar tramite il dialogo con Klaus. "
-    "Le prove si completano ancora manualmente."
-)
+with st.sidebar:
+    countdown()
+    if st.button("Riprendi" if n["paused"] else "Pausa"):
+        nf.pause(n, not n["paused"])
+        st.rerun()
+    if st.button("⏭ CHEAT: fase successiva"):
+        nf.cheat(n)
+        st.rerun()
+    st.caption("Il cheat registra un salto e prepara i ruoli mancanti.")
 
-tab_gioca, tab_lab, tab_diagnostica = st.tabs([
-    "🎮 Gioca & Esplora",
-    "🎭 Character's Lab",
-    "🔍 Diagnostica",
-])
+# Non comunicare a ogni agente i segreti delle conversazioni altrui.
+def situazione_agenti():
+    return {
+        "fase": n["phase"], "profilo_giocatore": st.session_state.player_profile,
+        "brago_con_protagonista": n["brago_with_player"],
+        "contesto": (
+            "Il motore gestisce gli accessi: non inventare concessioni. "
+            "Al bar solo " + str(n["gatekeeper"]) + " può presentare il protagonista a Lizzie. "
+            "Il sequestrato " + str(n["captive"]) + " ha procurato soltanto l'ingresso al bar. "
+            "Reagisci alle tue memorie degli incontri precedenti: non conosci automaticamente quelle altrui."
+        ),
+    }
 
+# Il laboratorio non conta come un incontro di gioco.
+def dialogo_gioco(aid, key):
+    nome = st.session_state.agent_profiles[aid]["name"]
+    mostra_cronologia(key)
+    with st.form("dialogo_"+key, clear_on_submit=True):
+        testo = st.text_input(f"Cosa dici a {nome}?")
+        submit = st.form_submit_button("Invia", disabled=n["paused"])
+    if submit and testo.strip():
+        nf.update_clock(n)
+        if n["phase"] in ("sconfitta", "vittoria"):
+            st.rerun()
+        if not ottieni_api_key():
+            st.warning("Configura la chiave API nel laboratorio. L'incontro non viene contato.")
+            return
+        trial = copy.deepcopy(st.session_state.agent_state)
+        try:
+            reply = ar.talk(trial, st.session_state.agent_profiles, aid, testo,
+                            situazione_agenti(), OpenAI(api_key=ottieni_api_key()),
+                            st.session_state.get("modello_agenti", "gpt-4o-mini"))
+        except Exception:
+            st.error("Dialogo non riuscito. Nessun incontro o memoria aggiornato.")
+            return
+        nf.update_clock(n)
+        if n["phase"] == "sconfitta":
+            st.rerun()
+        st.session_state.agent_state = trial
+        st.session_state.chat_history.setdefault(key, []).extend([
+            {"role":"user", "content":testo}, {"role":"assistant", "content":reply}])
+        if n["phase"] == "case":
+            nf.home_dialogue(n, aid)
+        elif n["phase"] == "lizzie_bar":
+            nf.bar_dialogue(n, aid)
+        st.rerun()
 
-# =========================================================
-# GIOCO
-# =========================================================
-
+st.caption("Venezia Luna Park 0.4 • 20 minuti reali = 24 ore simulate")
+tab_gioca, tab_lab, tab_diagnostica = st.tabs(["Gioca", "Character's Lab", "Diagnostica"])
 with tab_gioca:
-
-    # -----------------------------------------------------
-    # ESPLORAZIONE
-    # -----------------------------------------------------
-
-    if st.session_state.fase_venezia == "esplorazione":
-        st.title("🏰 Venezia — Scegli quale quartiere esplorare")
-        mostra_foto("mappa_venezia", "Mappa di Venezia")
-
-        st.caption(
-            "Scegli un quartiere per incontrare "
-            "uno degli abitanti della città."
-        )
-
-        colonne = st.columns(3)
-
-        disposizione = [
-            ("cannaregio", 0),
-            ("san_marco", 0),
-            ("rialto", 1),
-            ("castello", 1),
-            ("dorsoduro", 2),
-        ]
-
-        for quartiere, indice in disposizione:
-            info = QUARTIERI[quartiere]
-
-            with colonne[indice]:
-                if st.button(
-                    f"{info['nome']} "
-                    f"(Incontra {info['nome_agente']})",
-                    key=f"esplora_{quartiere}",
-                    use_container_width=True,
-                ):
-                    vai_al_quartiere(quartiere)
-
-    # -----------------------------------------------------
-    # INCONTRO, DIALOGO E PROVA
-    # -----------------------------------------------------
-
-    elif st.session_state.fase_venezia == "prova":
-        quartiere = st.session_state.agente_scelto
-
-        if quartiere not in QUARTIERI:
-            st.session_state.fase_venezia = "esplorazione"
-            st.session_state.in_sfida = False
+    if n["paused"]:
+        st.info("Partita in pausa. Riprendi dalla barra laterale.")
+    if n["phase"] == "case":
+        st.title("Tre incontri nelle case dei Fondatori")
+        st.write(f"Fondatori incontrati: {len(n['met'])}/3")
+        mostra_foto("mappa_venezia", "Venezia")
+        options = list(QUARTIERI)
+        zid = st.selectbox("Scegli la casa", options,
+                           format_func=lambda z: QUARTIERI[z]["nome"]+" — "+QUARTIERI[z]["nome_agente"])
+        aid = QUARTIERI[zid]["agente"]
+        mostra_palazzo_personaggio(aid, QUARTIERI[zid]["nome_agente"])
+        mostra_video_talk(aid, QUARTIERI[zid]["nome_agente"])
+        st.caption("Un incontro conta dopo il primo scambio AI riuscito. Le visite ripetute non aumentano il totale.")
+        dialogo_gioco(aid, "casa_"+aid)
+    elif n["phase"] == "brago_video":
+        st.title("Brago arriva a Venezia")
+        if not riproduci_video_generico("BragoVenezia"):
+            st.info("Aggiungi assets/BragoVenezia.mp4. Puoi proseguire anche senza la clip.")
+        st.write("Brago ti raggiunge: ora verrà con te e ti costringerà a portare avanti la consegna.")
+        if st.button("Continua con Brago", disabled=n["paused"]):
+            nf.continue_video(n)
             st.rerun()
-
-        info = QUARTIERI[quartiere]
-        aid = info["agente"]
-        nome = info["nome_agente"]
-
-        st.session_state.relazioni_personaggi[aid][
-            "incontrato_prima"
-        ] = True
-
-        st.title(f"{info['nome']} — Incontro con {nome}")
-
-        if st.session_state.in_sfida:
-            st.subheader(
-                f"🥊 Missione di {nome}: {info['compito']}"
-            )
-
-            if not mostra_video_sfida(aid, nome):
-                st.info(
-                    f"Aggiungi assets/{aid}_sfida.mp4 "
-                    "per mostrare il video della prova."
-                )
-
-            st.caption(
-                "Nel prototipo il completamento della prova "
-                "è dichiarato dal giocatore."
-            )
-
-            if st.button(
-                "✅ HO COMPLETATO QUESTA MISSIONE!",
-                use_container_width=True,
-            ):
-                st.session_state.relazioni_personaggi[aid][
-                    "alleato"
-                ] = True
-
-                ar.remember(
-                    st.session_state.agent_state,
-                    aid,
-                    (
-                        "Il giocatore ha dichiarato completata "
-                        "la prova tramite il pulsante del prototipo."
-                    ),
-                    "protagonista",
-                    "completamento_manuale_non_verificato",
-                )
-
-                st.session_state.in_sfida = False
-
-                if kg.gate(
-                    st.session_state.agent_state
-                )["granted"]:
-                    st.session_state.fase_venezia = "lizzie_bar"
-                else:
-                    st.session_state.fase_venezia = "prova"
-
-                st.rerun()
-
-            if st.button(
-                "↩️ TORNA ALLA CHAT",
-                use_container_width=True,
-            ):
-                st.session_state.in_sfida = False
-                st.rerun()
-
-        else:
-            mostra_video_talk(aid, nome)
-            st.subheader(f"💬 Chat con {nome}")
-
-            mostra_cronologia(aid)
-
-            frase = st.text_input(
-                f"Cosa dici a {nome}?",
-                key=f"chat_{aid}",
-            )
-
-            if st.button(
-                "💬 Invia messaggio",
-                key=f"btn_{aid}",
-            ):
-                if frase.strip():
-                    invia_dialogo(aid, nome, aid, frase)
-
-            st.divider()
-            col_sfida, col_foto = st.columns([1, 1])
-
-            with col_sfida:
-                st.warning(f"📜 COMPITO: {info['compito']}")
-
-                if st.button(
-                    "🥊 AFFRONTA LA MISSIONE / SFIDA",
-                    use_container_width=True,
-                ):
-                    st.session_state.in_sfida = True
-                    st.rerun()
-
-            with col_foto:
-                mostra_foto(aid, nome)
-
-        st.divider()
-        st.subheader("🗺️ Viaggia verso un altro quartiere")
-
-        colonne_mappa = st.columns(len(QUARTIERI))
-
-        for indice, (quartiere, info) in enumerate(
-            QUARTIERI.items()
-        ):
-            if colonne_mappa[indice].button(
-                f"📍 {info['nome_agente']}",
-                key=f"map_btn_{quartiere}",
-                use_container_width=True,
-            ):
-                vai_al_quartiere(quartiere)
-
-    # -----------------------------------------------------
-    # LIZZIE BAR
-    # -----------------------------------------------------
-
-    elif st.session_state.fase_venezia == "lizzie_bar":
-        st.title("🌙 Il Lizzie Bar — Notte")
-        st.subheader("🏰 Il palazzo del Lizzie Bar")
-
-        mostra_palazzo_personaggio("lizzie", "Lizzie Palace")
-
-        st.caption(
-            "È calata la notte su Venezia. "
-            "I personaggi si sono ritrovati al bar."
-        )
-
-        st.divider()
-        st.subheader("👥 Scegli con chi parlare")
-
-        nome_bar = st.selectbox(
-            "Seleziona un cliente:",
-            ["Rosko", "Alberic", "Klaus", "Marla", "Eloise"],
-        )
-        aid_bar = nome_bar.lower()
-
-        col_media, col_dialogo = st.columns([1, 1])
-
-        with col_media:
-            mostra_foto_lizziebar(
-                aid_bar,
-                f"{nome_bar} al Lizzie Bar",
-            )
-            mostra_video_lizzietalk(aid_bar, nome_bar)
-
-            if st.session_state.relazioni_personaggi[
-                aid_bar
-            ]["incontrato_prima"]:
-                st.success(
-                    f"{nome_bar} si ricorda "
-                    "del vostro incontro a Venezia."
-                )
-            else:
-                st.info(
-                    f"{nome_bar} ti nota "
-                    "per la prima volta stasera."
-                )
-
-        with col_dialogo:
-            st.subheader(f"💬 Parlando con {nome_bar}")
-
-            chiave_chat = f"bar_chat_{aid_bar}"
-            mostra_cronologia(chiave_chat)
-
-            frase_bar = st.text_input(
-                f"Cosa dici a {nome_bar}?",
-                key=f"in_bar_{aid_bar}",
-            )
-
-            if st.button(
-                "💬 Offri un drink e parla",
-                key=f"btn_bar_{aid_bar}",
-            ):
-                if frase_bar.strip():
-                    invia_dialogo(
-                        chiave_chat,
-                        nome_bar,
-                        aid_bar,
-                        frase_bar,
-                    )
-
-        st.divider()
-
-        if st.button("🗺️ TORNA AI QUARTIERI"):
-            st.session_state.fase_venezia = "esplorazione"
-            st.session_state.in_sfida = False
+    elif n["phase"] == "sequestro":
+        st.title("Brago impone una nuova strada")
+        st.write("Scegli uno dei due Fondatori mai incontrati. Nel prototipo il sequestro è un evento narrativo, non una scena d'azione giocabile.")
+        target = st.radio("Chi costringete a procurarvi l'ingresso al bar?", nf.remaining(n),
+                          format_func=lambda a: st.session_state.agent_profiles[a]["name"])
+        if st.button("Sequestra e ottieni l'ingresso al Lizzie Bar", disabled=n["paused"]):
+            if nf.kidnap(n, target):
+                ar.remember(st.session_state.agent_state, target,
+                            "Brago e il protagonista mi hanno costretto a procurare l'ingresso al Lizzie Bar.",
+                            "motore", "fatto_verificato")
             st.rerun()
-
-        st.subheader("🚪 Il backstage di Lizzie")
-
-        prove_superate = sum(
-            1
-            for relazione in (
-                st.session_state.relazioni_personaggi.values()
-            )
-            if relazione["alleato"]
-        )
-
-        if prove_superate >= 4:
-            st.success(
-                "Hai superato le prove richieste. "
-                "Puoi entrare nel backstage."
-            )
-
-            if st.button(
-                "🚪 ENTRA NEL BACKSTAGE DA LIZZIE",
-                use_container_width=True,
-            ):
-                st.session_state.fase_venezia = "backstage"
-                st.rerun()
+    elif n["phase"] == "lizzie_bar":
+        st.title("Lizzie Bar — le conseguenze degli incontri")
+        mostra_palazzo_personaggio("lizzie", "Lizzie Bar")
+        aid = st.selectbox("Con chi parli?", nf.FOUNDERS,
+                           format_func=lambda a: st.session_state.agent_profiles[a]["name"])
+        if aid in n["met"]:
+            st.info("Questo personaggio ricorda il vostro incontro a casa.")
+        elif aid == n["captive"]:
+            st.warning("È il Fondatore sequestrato. Ha procurato l'ingresso al bar, non l'accesso a Lizzie.")
         else:
-            st.warning(
-                f"Prove superate: {prove_superate}/4 richieste "
-                "(5 disponibili)."
-            )
-
-            if st.button(
-                "🔓 [TEST] COMPLETA LE PROVE E APRI IL BACKSTAGE",
-                use_container_width=True,
-            ):
-                for relazione in (
-                    st.session_state.relazioni_personaggi.values()
-                ):
-                    relazione["alleato"] = True
-
-                st.session_state.fase_venezia = "backstage"
+            st.info("È l'unico Fondatore che non avevi ancora incontrato: può presentarti a Lizzie.")
+        mostra_foto_lizziebar(aid)
+        mostra_video_lizzietalk(aid, st.session_state.agent_profiles[aid]["name"])
+        dialogo_gioco(aid, "bar_"+aid)
+        if aid == n["gatekeeper"]:
+            if st.button("Chiedi la presentazione a Lizzie", disabled=n["paused"] or aid not in n["bar_spoken"]):
+                if nf.grant(n, aid):
+                    ar.remember(st.session_state.agent_state, aid,
+                                "Ho presentato il protagonista a Lizzie.", "motore", "fatto_verificato")
                 st.rerun()
-
-    # -----------------------------------------------------
-    # BACKSTAGE
-    # -----------------------------------------------------
-
-    elif st.session_state.fase_venezia == "backstage":
-        st.title("👑 Il backstage del Lizzie Bar")
-
-        col_foto, col_video = st.columns([1, 2])
-
-        with col_foto:
-            mostra_foto("lizzie", "Lizzie")
-
-        with col_video:
-            mostra_video_talk("lizzie", "Lizzie")
-
-        st.success(
-            "Hai raggiunto il backstage. "
-            "Ora puoi parlare con Lizzie."
-        )
-
-        st.subheader("💬 Chat con Lizzie")
-        mostra_cronologia("lizzie_chat")
-
-        messaggio = st.text_input(
-            "Cosa dici a Lizzie?",
-            key="in_lizzie",
-        )
-
-        if st.button(
-            "💬 Parla con Lizzie",
-            key="btn_lizzie",
-        ):
-            if messaggio.strip():
-                invia_dialogo(
-                    "lizzie_chat",
-                    "Lizzie",
-                    "lizzie",
-                    messaggio,
-                )
-
-        st.divider()
-
-        if st.button(
-            "🔄 GIOCA UNA NUOVA AVVENTURA",
-            use_container_width=True,
-        ):
+            st.caption("Per questa versione basta uno scambio riuscito con il personaggio; la concessione è una regola del motore.")
+    elif n["phase"] == "backstage":
+        st.title("Finalmente Lizzie")
+        mostra_foto("lizzie", "Lizzie")
+        mostra_video_talk("lizzie", "Lizzie")
+        dialogo_gioco("lizzie", "lizzie_chat")
+        if st.button("Consegna la VHS di Brago", disabled=n["paused"]):
+            if nf.deliver(n):
+                ar.remember(st.session_state.agent_state, "lizzie",
+                            "Il protagonista mi ha consegnato la VHS di Brago.", "motore", "fatto_verificato")
+            st.rerun()
+    elif n["phase"] == "vittoria":
+        st.success("VHS consegnata a Lizzie entro il termine. Hai vinto il prototipo.")
+        if n["cheated"]:
+            st.caption("Sessione di test: sono stati utilizzati cheat.")
+        if st.button("Nuova avventura"):
             nuova_avventura()
-
+    elif n["phase"] == "sconfitta":
+        st.error("Sono trascorse 24 ore simulate: tempo scaduto.")
+        if st.button("Ricomincia"):
+            nuova_avventura()
 
 # =========================================================
 # CHARACTER'S LAB
@@ -941,14 +736,8 @@ with tab_gioca:
 with tab_lab:
     st.header("🎭 Character's Lab — Laboratorio degli agenti")
 
-    st.caption(
-        "Versione 0.3: voci, memoria, iniziative sociali "
-        "e valutazione del dialogo con Klaus. "
-        "Spostamenti, inseguimenti e prove non sono ancora "
-        "gestiti autonomamente dagli agenti."
-    )
-
-    kg.diagnostics(st)
+    st.caption("Versione 0.4: biografie, voci e memoria. Il nuovo percorso è gestito da narrative_flow.py.")
+    st.caption("Il laboratorio non conta come incontro di gioco. Metti in pausa il timer per modificare le schede.")
 
     st.divider()
 
@@ -1001,11 +790,7 @@ with tab_lab:
         file_name=ar.FILES[lab_id],
     )
 
-    st.caption(
-        "I dialoghi del laboratorio usano la stessa memoria "
-        "della partita. Parlare con Klaus qui può quindi "
-        "sbloccare la presentazione al Lizzie Bar."
-    )
+    st.caption("I dialoghi del laboratorio condividono la memoria, ma non assegnano ruoli e non aprono accessi.")
 
     testo_lab = st.text_input(
         "Dialogo di prova",
@@ -1069,7 +854,8 @@ with tab_lab:
     st.subheader("💾 Salvataggio della sessione")
 
     snapshot = {
-        "format": "venezia-sociale-1",
+        "format": "venezia-sociale-4",
+        "narrative": nf.snapshot(n),
         "agents": st.session_state.agent_state,
         "profiles": st.session_state.agent_profiles,
         "phase": st.session_state.fase_venezia,
@@ -1093,7 +879,7 @@ with tab_lab:
 
     st.caption(
         "Il salvataggio contiene conversazioni, profili, "
-        "voce dei personaggi e stato della presentazione di Klaus. "
+        "voce dei personaggi, ruoli e tempo residuo. "
         "Non include la chiave API né il vecchio motore delle gondole."
     )
 
@@ -1110,7 +896,7 @@ with tab_lab:
         try:
             snap = json.loads(file_sessione.getvalue())
 
-            if snap["format"] != "venezia-sociale-1":
+            if snap["format"] != "venezia-sociale-4":
                 raise ValueError("Formato non compatibile.")
 
             if set(snap["agents"]["agents"]) != set(ar.FILES):
@@ -1119,26 +905,7 @@ with tab_lab:
             if set(snap["profiles"]) != set(ar.FILES):
                 raise ValueError("Profili non compatibili.")
 
-            if snap["phase"] not in (
-                "esplorazione",
-                "prova",
-                "lizzie_bar",
-                "backstage",
-            ):
-                raise ValueError("Fase non valida.")
-
-            if (
-                snap["selected"] is not None
-                and snap["selected"] not in QUARTIERI
-            ):
-                raise ValueError("Quartiere non valido.")
-
-            if (
-                snap["phase"] == "prova"
-                and snap["selected"] not in QUARTIERI
-            ):
-                raise ValueError("Quartiere della prova mancante.")
-
+            restored_narrative = nf.restore(snap["narrative"])
             if set(snap["relations"]) != set(nuove_relazioni()):
                 raise ValueError("Relazioni non compatibili.")
 
@@ -1181,22 +948,7 @@ with tab_lab:
             if not isinstance(snap["in_sfida"], bool):
                 raise ValueError("Stato della prova non valido.")
 
-            gate_salvato = snap["agents"].get("klaus_gate")
-
-            if gate_salvato is not None:
-                if not isinstance(gate_salvato, dict):
-                    raise ValueError("Stato Klaus non valido.")
-
-                if not isinstance(
-                    gate_salvato.get("granted"), bool
-                ):
-                    raise ValueError("Presentazione non valida.")
-
-                if not isinstance(
-                    gate_salvato.get("evaluations"), list
-                ):
-                    raise ValueError("Valutazioni non valide.")
-
+            st.session_state.narrative = restored_narrative
             st.session_state.agent_state = snap["agents"]
             st.session_state.agent_profiles = snap["profiles"]
             st.session_state.fase_venezia = snap["phase"]
@@ -1309,59 +1061,6 @@ with tab_lab:
 # =========================================================
 
 with tab_diagnostica:
-    st.header("🔍 Diagnostica di sistema")
-
-    st.write(
-        "📌 Stage attuale:",
-        st.session_state.stage,
-    )
-    st.write(
-        "📌 Fase Venezia:",
-        st.session_state.fase_venezia,
-    )
-    st.write(
-        "📍 Quartiere selezionato:",
-        st.session_state.agente_scelto,
-    )
-    st.write(
-        "👤 Profilo ricordi:",
-        st.session_state.player_profile,
-    )
-    st.write(
-        "🤝 Relazioni:",
-        st.session_state.relazioni_personaggi,
-    )
-
-    presentazione = kg.gate(
-        st.session_state.agent_state
-    )["granted"]
-
-    st.write(
-        "🎟️ Presentazione di Klaus concessa:",
-        presentazione,
-    )
-
-    st.divider()
-    st.subheader("Scorciatoia per testare il backstage")
-
-    if not presentazione:
-        st.info(
-            "Prima ottieni la presentazione di Klaus. "
-            "La scorciatoia completa soltanto le prove successive."
-        )
-
-    if st.button(
-        "🔓 [TEST] COMPLETA LE PROVE E APRI IL BACKSTAGE",
-        key="diagnostica_backstage",
-        disabled=not presentazione,
-        use_container_width=True,
-    ):
-        for relazione in (
-            st.session_state.relazioni_personaggi.values()
-        ):
-            relazione["alleato"] = True
-
-        st.session_state.stage = "game"
-        st.session_state.fase_venezia = "backstage"
-        st.session_state.in_sfida = False
-        st.rerun()
+    st.header("Diagnostica del nuovo percorso")
+    st.json(nf.snapshot(n))
+    st.caption("Le sessioni 0.3 non sono importabili: i ruoli della versione 0.4 richiedono una nuova partita.")
