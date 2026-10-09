@@ -6,7 +6,7 @@ DURATION = 20 * 60
 PHASES = ('case', 'brago_video', 'sequestro', 'lizzie_bar', 'backstage', 'vittoria', 'sconfitta')
 
 def new(now=None):
-    return dict(version=4, phase='case', met=[], captive=None, gatekeeper=None,
+    return dict(version=41, counts={}, current=None, referral_pending=False, referrals=[], phase='case', met=[], captive=None, gatekeeper=None,
                 brago_with_player=False, bar_spoken=[], granted=False,
                 elapsed=0.0, tick=time.monotonic() if now is None else now,
                 paused=False, events=[], cheated=False)
@@ -34,13 +34,33 @@ def home_dialogue(s, aid):
     update_clock(s)
     if s['paused'] or s['phase'] != 'case' or aid not in FOUNDERS:
         return False
-    if aid not in s['met']:
+    if s['referral_pending'] or (s['current'] is not None and s['current'] != aid):
+        return False
+    s['current'] = aid
+    count = s['counts'].get(aid, 0)
+    if count >= 5:
+        return False
+    s['counts'][aid] = count + 1
+    if s['counts'][aid] == 5:
         s['met'].append(aid)
-        log(s, 'incontro_casa', actor=aid)
-    if len(s['met']) == 3:
-        s['phase'] = 'brago_video'
-        log(s, 'arrivo_brago')
+        log(s, 'incontro_casa_completo', actor=aid)
+        if len(s['met']) == 3:
+            s['phase'] = 'brago_video'
+            log(s, 'arrivo_brago')
+        else:
+            s['referral_pending'] = True
     return True
+
+def refer(s, aid, target, reason):
+    update_clock(s)
+    if s['paused'] or s['phase'] != 'case' or not s['referral_pending'] or aid != s['current'] or target not in remaining(s):
+        return False
+    s['referrals'].append(dict(actor=aid, target=target, reason=reason))
+    log(s, 'rinvio_agente', actor=aid, target=target)
+    s['current'] = target
+    s['referral_pending'] = False
+    return True
+
 
 def continue_video(s):
     update_clock(s)
@@ -99,6 +119,8 @@ def cheat(s):
     log(s, 'cheat', phase=s['phase'])
     if s['phase'] == 'case':
         s['met'] = (s['met'] + remaining(s))[:3]
+        s['counts'].update({a:5 for a in s['met']})
+        s['referral_pending'] = False
         s['phase'] = 'brago_video'
     elif s['phase'] == 'brago_video':
         continue_video(s)
@@ -115,11 +137,19 @@ def snapshot(s):
 
 def restore(raw):
     s = dict(raw)
-    if s.get('version') != 4 or s.get('phase') not in PHASES:
+    if s.get('version') != 41 or s.get('phase') not in PHASES:
         raise ValueError('Percorso non compatibile')
     met = s.get('met', [])
     if not isinstance(met, list) or len(set(met)) != len(met) or len(met) > 3 or any(a not in FOUNDERS for a in met):
         raise ValueError('Incontri non validi')
+    if not isinstance(s.get('counts'), dict) or any(a not in FOUNDERS or type(v) is not int or not 0 <= v <= 5 for a,v in s['counts'].items()):
+        raise ValueError('Scambi non validi')
+    if any(s['counts'].get(a) != 5 for a in met):
+        raise ValueError('Incontro incompleto')
+    if s.get('current') is not None and s['current'] not in FOUNDERS:
+        raise ValueError('Personaggio attivo non valido')
+    if type(s.get('referral_pending')) is not bool or not isinstance(s.get('referrals'),list):
+        raise ValueError('Rinvio non valido')
     elapsed = s.get('elapsed')
     if isinstance(elapsed, bool) or not isinstance(elapsed, (int, float)) or not 0 <= elapsed <= DURATION:
         raise ValueError('Tempo non valido')
