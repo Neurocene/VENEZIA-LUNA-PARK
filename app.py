@@ -762,7 +762,7 @@ with tab_gioca:
             selected = None
             st.session_state.palazzo_page = None
         if selected is None:
-            st.title("Venezia â€” incontri nei palazzi")
+            st.title("welcome to Venezia luna park")
             mostra_foto("mappa_venezia", "Venezia")
             columns = st.columns(3)
             for index, aid in enumerate(nf.FOUNDERS):
